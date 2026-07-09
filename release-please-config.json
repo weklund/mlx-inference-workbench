@@ -5,7 +5,14 @@
       "package-name": "mlx-inference-workbench",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
-      "extra-files": ["pyproject.toml"]
+      "extra-files": [
+        "pyproject.toml",
+        {
+          "type": "yaml",
+          "path": "CITATION.cff",
+          "glob": false
+        }
+      ]
     }
   },
   "changelog-sections": [
