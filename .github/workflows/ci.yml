@@ -99,7 +99,7 @@ jobs:
           uv pip install maturin
           uv run maturin develop --release
       - run: uv sync --frozen --extra dev
-      - run: uv run pytest -m "integration" --tb=short
+      - run: uv run pytest -m "integration" --tb=short || [ $? -eq 5 ]
 
   commitlint:
     name: Commit Messages
