@@ -10,6 +10,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-rust:
+    name: Check for Rust code
+    runs-on: ubuntu-latest
+    outputs:
+      has-rust: ${{ steps.check.outputs.has-rust }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "has-rust=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-rust=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint-python:
     name: Lint (Python)
     runs-on: ubuntu-latest
@@ -23,7 +38,8 @@ jobs:
   lint-rust:
     name: Lint (Rust)
     runs-on: ubuntu-latest
-    if: hashFiles('Cargo.toml') != ''
+    needs: check-rust
+    if: needs.check-rust.outputs.has-rust == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -35,7 +51,8 @@ jobs:
   semver-check:
     name: API Compatibility (cargo-semver-checks)
     runs-on: ubuntu-latest
-    if: hashFiles('Cargo.toml') != '' && github.event_name == 'pull_request'
+    needs: check-rust
+    if: needs.check-rust.outputs.has-rust == 'true' && github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,8 +73,8 @@ jobs:
   test-rust:
     name: Test (Rust)
     runs-on: macos-latest
-    if: hashFiles('Cargo.toml') != ''
-    needs: lint-rust
+    needs: [check-rust, lint-rust]
+    if: needs.check-rust.outputs.has-rust == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -66,15 +83,18 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: macos-latest
-    needs: [test-python, test-rust]
-    if: always() && needs.test-python.result == 'success' && (needs.test-rust.result == 'success' || needs.test-rust.result == 'skipped')
+    needs: [check-rust, test-python, test-rust]
+    if: |
+      always() &&
+      needs.test-python.result == 'success' &&
+      (needs.test-rust.result == 'success' || needs.test-rust.result == 'skipped')
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - uses: dtolnay/rust-toolchain@stable
-        if: hashFiles('Cargo.toml') != ''
+        if: needs.check-rust.outputs.has-rust == 'true'
       - name: Build Rust bindings
-        if: hashFiles('Cargo.toml') != ''
+        if: needs.check-rust.outputs.has-rust == 'true'
         run: |
           uv pip install maturin
           uv run maturin develop --release
@@ -91,6 +111,6 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install @commitlint/cli @commitlint/config-conventional
       - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
