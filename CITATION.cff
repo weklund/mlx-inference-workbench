@@ -3,9 +3,8 @@ title: "mlx-inference-workbench"
 message: "If you use this benchmarking methodology or reference results from this project, please cite it using the metadata below."
 type: software
 authors:
-  - given-names: Wes
+  - given-names: Westley
     family-names: Eklund
-    orcid: ""
 repository-code: "https://github.com/weklund/mlx-inference-workbench"
 license: MIT
 version: 0.1.0

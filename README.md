@@ -144,6 +144,20 @@ All metrics reported as distributions: p50, p90, p95, p99, trimmed mean, std dev
 - [HLD: Benchmarking Harness](docs/HLD.md) — Full architecture, requirements, and design decisions
 - [Task Breakdown](docs/TASKS.md) — Implementation plan with phases and checkboxes
 
+## Citing
+
+If you use this benchmarking methodology or reference results from this project, please cite it:
+
+```bibtex
+@software{eklund2026mlxinferenceworkbench,
+  author       = {Eklund, Westley},
+  title        = {mlx-inference-workbench},
+  year         = {2026},
+  url          = {https://github.com/weklund/mlx-inference-workbench},
+  version      = {0.1.0}
+}
+```
+
 ## License
 
 MIT
