@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "mlx-inference-workbench"
+message: "If you use this benchmarking methodology or reference results from this project, please cite it using the metadata below."
+type: software
+authors:
+  - given-names: Wes
+    family-names: Eklund
+    orcid: ""
+repository-code: "https://github.com/weklund/mlx-inference-workbench"
+license: MIT
+version: 0.1.0
+date-released: "2026-07-09"
+keywords:
+  - llm-inference
+  - apple-silicon
+  - metal-kernels
+  - benchmarking
+  - mlx
+  - speculative-decoding
+abstract: >-
+  A statistically rigorous benchmarking harness for LLM text inference
+  on Apple Silicon (M5 Max), supporting comparison across backends
+  (MTPLX, MLX, llama.cpp, BaseRT, custom Metal kernels) with
+  reproducibility guarantees, thermal discipline, and custom compute
+  kernel development.
