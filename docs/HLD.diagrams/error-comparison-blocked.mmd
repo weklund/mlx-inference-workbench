@@ -1,0 +1,39 @@
+%% Sequence Diagram — Error Scenario: Invalid Comparison Blocked
+%% Import: Arrange → Insert → Mermaid → choose "Diagram"
+
+sequenceDiagram
+    title Error Scenario — Comparability Gate Blocks Invalid Comparison (Updated 2026-07-08)
+    autonumber
+    actor R as Researcher
+    participant CLI as Orchestrator<br/>(Python CLI)
+    participant ML as MLflow<br/>(local tracking)
+    participant CG as Comparability Gate
+    participant SC as Statistical Comparator<br/>(SciPy)
+
+    R->>+CLI: bench compare run_a run_b
+    CLI->>+ML: fetch metadata(run_a, run_b)
+    ML-->>-CLI: params_a, params_b
+
+    CLI->>+CG: validate_comparability(params_a, params_b)
+
+    Note over CG: Check: prompt dataset hash match?
+    Note over CG: Check: hardware profile match?
+    Note over CG: Check: metrics schema version match?
+    Note over CG: Check: thermal monitoring quality compatible?
+    Note over CG: Check: OS/library versions compatible?
+
+    alt Violations found
+        CG-->>-CLI: BLOCKED — violations: [different prompt hash, degraded thermal on run_b]
+        CLI-->>R: ❌ Comparison blocked.<br/>Violations:<br/>1. Prompt dataset hash mismatch<br/>2. Run B had degraded thermal monitoring<br/><br/>Re-run with matching conditions or acknowledge caveats.
+    else All checks pass
+        CG-->>CLI: COMPARABLE
+        CLI->>+SC: compare(run_a_metrics, run_b_metrics)
+        SC->>SC: Shapiro-Wilk normality test
+        alt Normal distributions
+            SC->>SC: Welch's t-test
+        else Non-normal
+            SC->>SC: Mann-Whitney U test
+        end
+        SC-->>-CLI: effect_size, CI_95, p_value, verdict
+        CLI-->>-R: ✓ Statistically significant improvement of 12.3% ± 2.1% (p=0.003, Cohen's d=0.84)
+    end

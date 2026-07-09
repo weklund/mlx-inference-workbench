@@ -1,0 +1,33 @@
+## Container Diagram (C4 Level 2) — Benchmarking Harness Proposed Architecture for draw.io CSV import
+# label: <b>%name%</b><br><font color="#666666" style="font-size:10px;">%technology%</font><br><i style="font-size:10px;">%purpose%</i>
+# stylename: kind
+# styles: {"service": "rounded=1;whiteSpace=wrap;html=1;fillColor=%fill%;strokeColor=#232F3E;strokeWidth=2;fontSize=11;align=center;verticalAlign=middle;", "external": "rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=2;dashed=1;fontSize=11;align=center;verticalAlign=middle;", "actor": "shape=umlActor;html=1;fillColor=#ffffff;strokeColor=#666666;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=12;"}
+# namespace: csvcontainer-
+# connect: {"from":"refs_sync", "to":"id", "label": "sync call", "style":"curved=0;endArrow=block;endFill=1;strokeColor=#232F3E;strokeWidth=2;fontSize=10;"}
+# connect: {"from":"refs_async", "to":"id", "label": "logs to", "style":"curved=0;endArrow=block;endFill=1;strokeColor=#232F3E;strokeWidth=2;dashed=1;fontSize=10;"}
+# width: 140
+# height: 80
+# padding: 8
+# ignore: id,kind,fill,refs_sync,refs_async
+# nodespacing: 60
+# levelspacing: 100
+# edgespacing: 40
+# layout: horizontaltree
+## CSV data starts below this line
+id,name,technology,purpose,kind,fill,refs_sync,refs_async
+researcher,Researcher,Human,Configures and triggers experiments,actor,#ffffff,orchestrator,""
+orchestrator,Orchestrator,Python (Click CLI),Coordinates full benchmark lifecycle,service,#dae8fc,"hw_probe,prompt_mgr,thermal_mon,engines,metrics_comp,compare",mlflow
+hw_probe,Hardware Probe,Python (sysctl),Captures M5 Max specs + OS + git SHA + library versions,service,#d5e8d4,"",""
+prompt_mgr,Prompt Manager,Python (JSONL),Loads + validates SHA-256 checksums on prompt datasets,service,#d5e8d4,"",""
+thermal_mon,Thermal Monitor,Python (powermetrics),Detects throttling + flags tainted iterations,service,#fff2cc,"",""
+engines,Engine Interface,Python ABC,Abstract interface to all backends,service,#dae8fc,"mtplx_eng,mlx_eng,vlm_eng,llama_eng,basert_eng,custom_eng",""
+mtplx_eng,MTPLX Engine,Python (mtplx API),MTP speculative decoding with custom Metal kernels,service,#e1d5e7,"",""
+mlx_eng,mlx-lm Engine,Python (mlx-lm),Stock MLX inference,service,#e1d5e7,"",""
+vlm_eng,mlx-vlm Engine,Python (mlx-vlm),mlx-vlm text generation mode,service,#e1d5e7,"",""
+llama_eng,llama.cpp Engine,Python (subprocess),llama.cpp Metal backend,service,#e1d5e7,"",""
+basert_eng,BaseRT Engine,Python (subprocess/API),Native Metal runtime,service,#e1d5e7,"",""
+custom_eng,Custom Kernel Engine,Python + Rust (PyO3),Custom Metal kernels via PyO3 bindings,service,#e1d5e7,"rust_bench",""
+metrics_comp,Metrics Computer,Python (NumPy/SciPy),Computes p50/p90/p95/p99 + trimmed mean + std dev + CoV,service,#d5e8d4,"",""
+compare,Comparability Gate + Statistical Comparator,Python (SciPy),Validates comparability + Welch t-test / Mann-Whitney U,service,#d5e8d4,"",""
+rust_bench,Rust Kernel Micro-bench,Rust (Criterion.rs + metal-rs),Kernel correctness + performance with direct Metal access,service,#fff2cc,"",mlflow
+mlflow,MLflow Tracking,MLflow (local file-based),Single source of truth — params + metrics + artifacts,external,#f5f5f5,"",""

@@ -1,0 +1,21 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "mlx-inference-workbench",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "extra-files": ["pyproject.toml"]
+    }
+  },
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "bench", "section": "Benchmarks" },
+    { "type": "refactor", "section": "Refactoring" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "ci", "section": "CI/CD" },
+    { "type": "test", "section": "Tests" }
+  ]
+}

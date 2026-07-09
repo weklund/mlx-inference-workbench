@@ -1,0 +1,60 @@
+name: Nightly Benchmarks
+
+on:
+  schedule:
+    - cron: "0 4 * * *"  # 4 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      config:
+        description: "Experiment config to run (default: regression suite)"
+        required: false
+        default: "configs/experiments/regression_suite.yaml"
+
+jobs:
+  benchmark:
+    name: Regression Benchmarks
+    runs-on: [self-hosted, macos, apple-silicon, m5-max]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - run: uv sync --frozen
+
+      - name: Run regression benchmark suite
+        run: |
+          uv run bench run ${{ github.event.inputs.config || 'configs/experiments/regression_suite.yaml' }}
+
+      - name: Upload results to Bencher
+        uses: bencherdev/bencher@main
+        with:
+          command: uv run bench report --format bencher latest
+          project: mlx-inference-workbench
+          token: ${{ secrets.BENCHER_API_TOKEN }}
+          branch: main
+          testbed: m5-max-128gb
+          err: true  # fail if regression detected
+
+      - name: Upload MLflow artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: |
+            benchmarks/results/
+            mlruns/
+          retention-days: 90
+
+      - name: Create issue on regression
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Performance regression detected (nightly ${new Date().toISOString().split('T')[0]})`,
+              body: `Nightly benchmark run #${context.runNumber} detected a performance regression.\n\n[View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['regression', 'automated']
+            })

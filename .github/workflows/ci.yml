@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-python:
+    name: Lint (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  lint-rust:
+    name: Lint (Rust)
+    runs-on: ubuntu-latest
+    if: hashFiles('Cargo.toml') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+
+  semver-check:
+    name: API Compatibility (cargo-semver-checks)
+    runs-on: ubuntu-latest
+    if: hashFiles('Cargo.toml') != '' && github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+
+  test-python:
+    name: Test (Python)
+    runs-on: macos-latest
+    needs: lint-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen --extra dev
+      - run: uv run pytest -m "not gpu and not slow" --tb=short
+
+  test-rust:
+    name: Test (Rust)
+    runs-on: macos-latest
+    if: hashFiles('Cargo.toml') != ''
+    needs: lint-rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
+
+  integration:
+    name: Integration Tests
+    runs-on: macos-latest
+    needs: [test-python, test-rust]
+    if: always() && needs.test-python.result == 'success' && (needs.test-rust.result == 'success' || needs.test-rust.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - uses: dtolnay/rust-toolchain@stable
+        if: hashFiles('Cargo.toml') != ''
+      - name: Build Rust bindings
+        if: hashFiles('Cargo.toml') != ''
+        run: |
+          uv pip install maturin
+          uv run maturin develop --release
+      - run: uv sync --frozen --extra dev
+      - run: uv run pytest -m "integration" --tb=short
+
+  commitlint:
+    name: Commit Messages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install @commitlint/cli @commitlint/config-conventional
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}

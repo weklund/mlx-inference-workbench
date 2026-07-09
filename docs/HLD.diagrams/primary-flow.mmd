@@ -1,0 +1,63 @@
+%% Sequence Diagram — Benchmarking Harness Primary Flow (Happy Path + Tainted Iteration)
+%% Import: Arrange → Insert → Mermaid → choose "Diagram"
+
+sequenceDiagram
+    title Benchmark Experiment — Primary Flow (Updated 2026-07-08)
+    autonumber
+    actor R as Researcher
+    participant CLI as Orchestrator<br/>(Python CLI)
+    participant HW as Hardware Probe<br/>(sysctl)
+    participant PM as Prompt Manager<br/>(JSONL + SHA-256)
+    participant TM as Thermal Monitor<br/>(powermetrics)
+    participant ML as MLflow<br/>(local tracking)
+    participant E as Engine<br/>(backend)
+    participant MC as Metrics Computer<br/>(NumPy/SciPy)
+
+    R->>+CLI: bench run config.yaml
+    CLI->>+HW: capture system state
+    HW-->>-CLI: M5 Max profile, OS, git SHA, lib versions
+    CLI->>+PM: load dataset + verify SHA-256
+    PM-->>-CLI: prompts[] (verified)
+    CLI->>+TM: check baseline thermal
+    TM-->>-CLI: OK (not throttling)
+    CLI->>+ML: start_run(params)
+    ML-->>-CLI: run_id
+
+    Note over CLI,E: Correctness Gate (temp=0, fixed seed)
+    CLI->>+E: generate(reference_prompt, temp=0, seed=42)
+    E-->>-CLI: output
+    CLI->>CLI: compare vs stored reference (bitwise)
+    Note over CLI: PASS — proceed to warmup
+
+    Note over CLI,E: Warmup Phase (N=10, discarded)
+    loop 10 warmup iterations
+        CLI->>E: generate(prompt, params)
+        E-->>CLI: result (discarded)
+    end
+
+    Note over CLI,E: Measurement Phase (M=10, timed)
+    loop 10 timed iterations
+        CLI->>+TM: check thermal state
+        TM-->>-CLI: thermal_reading
+        CLI->>+E: generate(prompt, params)
+        E-->>-CLI: GenerationResult{timestamps, memory, thermal}
+
+        alt Thermal throttle detected mid-iteration
+            TM-->>CLI: THROTTLE WARNING
+            CLI->>CLI: flag iteration status=THERMAL_TAINTED
+        end
+
+        CLI->>CLI: wait cooldown (30s)
+    end
+
+    Note over CLI,MC: Metrics Computation
+    CLI->>+MC: compute_stats(valid_iterations)
+    MC-->>-CLI: p50/p90/p95/p99, mean, trimmed_mean, std, CoV
+
+    alt CoV > 5%
+        CLI->>CLI: flag run as unstable
+    end
+
+    CLI->>+ML: log_metrics + log_artifacts(parquet, plots)
+    ML-->>-CLI: OK
+    CLI-->>-R: Run complete. ID: {run_id}, Status: stable/unstable
