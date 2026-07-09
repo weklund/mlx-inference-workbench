@@ -26,10 +26,11 @@ models/
 *.mlx/
 
 # Benchmark results (selective — commit summaries, not raw data)
+benchmarks/results/*
+!benchmarks/results/.gitkeep
 benchmarks/results/*.json
 benchmarks/results/*.csv
 benchmarks/results/*.jsonl
-!benchmarks/results/.gitkeep
 
 # Results archive (large, keep local)
 results_archive/
