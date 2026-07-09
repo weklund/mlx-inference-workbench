@@ -9,7 +9,7 @@
         {
           "type": "yaml",
           "path": "CITATION.cff",
-          "glob": false
+          "jsonpath": "$.version"
         }
       ]
     }
