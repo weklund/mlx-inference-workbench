@@ -34,6 +34,44 @@ COOLDOWN_SEC = 30
 SEED = 42
 
 
+def get_power_mode() -> dict:
+    """Read macOS power mode: 0=low_power, 1=automatic, 2=high_performance."""
+    try:
+        result = subprocess.run(
+            ["pmset", "-g"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        for line in result.stdout.split("\n"):
+            if "powermode" in line:
+                val = int(line.strip().split()[-1])
+                labels = {0: "low_power", 1: "automatic", 2: "high_performance"}
+                return {"powermode": val, "powermode_label": labels.get(val, f"unknown_{val}")}
+    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+        pass
+    return {"powermode": None, "powermode_label": "unknown"}
+
+
+def get_power_source() -> str:
+    """Check if running on battery or AC power."""
+    try:
+        result = subprocess.run(
+            ["pmset", "-g", "batt"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        output = result.stdout.lower()
+        if "ac power" in output:
+            return "ac"
+        elif "battery power" in output:
+            return "battery"
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return "unknown"
+
+
 def get_thermal_state() -> dict:
     """Read chip temperature via powermetrics (requires sudo) or fallback."""
     try:
@@ -124,11 +162,27 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
     """Run thermal reproducibility validation measurements."""
     from mlx_lm import load
 
+    power_mode = get_power_mode()
+    power_source = get_power_source()
+
     click.echo(f"Phase 0.5: Thermal Reproducibility Validation")
     click.echo(f"  Model: {model_id}")
     click.echo(f"  Session: Day {day}, {session}")
     click.echo(f"  Runs: {runs}, Cooldown: {cooldown}s")
+    click.echo(f"  Power mode: {power_mode['powermode_label']} ({power_mode['powermode']})")
+    click.echo(f"  Power source: {power_source}")
     click.echo()
+
+    if power_mode["powermode"] == 0:
+        click.echo("⚠️  WARNING: Low Power Mode is active. Results will be throttled and invalid.")
+        click.echo("   Switch to High Performance mode: System Settings → Battery → Low Power Mode → Never")
+        if not click.confirm("Continue anyway?"):
+            raise SystemExit(1)
+
+    if power_source == "battery":
+        click.echo("⚠️  WARNING: Running on battery. Plug in for reproducible results.")
+        click.echo("   (Proceeding anyway — results will be tagged as battery)")
+        click.echo()
 
     click.echo("Loading model...")
     model, tokenizer = load(model_id)
@@ -159,6 +213,9 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
             "run_index": i,
             "model_id": model_id,
             "cooldown_sec": cooldown,
+            "power_mode": power_mode["powermode"],
+            "power_mode_label": power_mode["powermode_label"],
+            "power_source": power_source,
             "thermal_before": thermal_before,
             "thermal_after": thermal_after,
             **run_data,
