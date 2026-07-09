@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environments
+.venv/
+venv/
+env/
+*.conda/
+
+# Model weights and large files
+*.bin
+*.safetensors
+*.gguf
+*.ggml
+*.pt
+*.pth
+*.onnx
+models/
+*.mlx/
+
+# Benchmark results (selective — commit summaries, not raw data)
+benchmarks/results/*.json
+benchmarks/results/*.csv
+benchmarks/results/*.jsonl
+!benchmarks/results/.gitkeep
+
+# Results archive (large, keep local)
+results_archive/
+
+# Xcode / Metal profiling artifacts
+*.gputrace/
+*.trace/
+*.xcresult/
+DerivedData/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (commitlint)
+node_modules/
+package-lock.json
+
+# MLflow
+mlruns/
+
+# Secrets / API keys
+.env
+.env.local
+*.key
+credentials.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Metal compiled shaders (rebuild from source)
+*.metallib
+*.air

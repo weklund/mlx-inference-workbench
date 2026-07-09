@@ -1,0 +1,58 @@
+[project]
+name = "mlx-inference-workbench"
+version = "0.1.0"
+description = "Personal workbench for optimizing LLM text inference on Apple Silicon with custom Metal kernels"
+requires-python = ">=3.11"
+dependencies = [
+    "mlx>=0.30.0",
+    "mlx-lm>=0.22.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "mlflow>=2.14.0",
+    "pyarrow>=15.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4.0",
+]
+profiling = [
+    "matplotlib>=3.8",
+    "pandas>=2.1",
+    "plotly>=5.18",
+]
+mtplx = [
+    "mtplx",
+]
+
+[project.scripts]
+bench = "benchmarks.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+markers = [
+    "gpu: requires Apple Silicon Metal GPU (self-hosted runner only)",
+    "slow: takes >60s, skipped in pre-merge CI",
+    "integration: cross-language or multi-component tests",
+    "nightly: only runs in nightly scheduled CI",
+    "weekly: only runs in weekly scheduled CI",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-benchmark>=4.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
