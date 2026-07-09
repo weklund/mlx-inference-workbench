@@ -38,7 +38,7 @@ def main():
         click.echo("No records found.")
         raise SystemExit(1)
 
-    click.echo(f"Phase 0.5: Thermal Reproducibility Analysis")
+    click.echo("Phase 0.5: Thermal Reproducibility Analysis")
     click.echo(f"  Total runs: {len(records)}")
     click.echo(f"  Model: {records[0].get('model_id', 'unknown')}")
     click.echo()
@@ -49,7 +49,7 @@ def main():
     cov_all = (std_all / mean_all) * 100 if mean_all > 0 else float("inf")
 
     click.echo("=" * 60)
-    click.echo(f"OVERALL RESULTS")
+    click.echo("OVERALL RESULTS")
     click.echo(f"  Mean:     {mean_all:.2f} tok/s")
     click.echo(f"  Std:      {std_all:.2f} tok/s")
     click.echo(f"  CoV:      {cov_all:.2f}%")

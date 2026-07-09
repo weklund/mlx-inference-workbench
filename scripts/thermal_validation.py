@@ -165,7 +165,7 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
     power_mode = get_power_mode()
     power_source = get_power_source()
 
-    click.echo(f"Phase 0.5: Thermal Reproducibility Validation")
+    click.echo("Phase 0.5: Thermal Reproducibility Validation")
     click.echo(f"  Model: {model_id}")
     click.echo(f"  Session: Day {day}, {session}")
     click.echo(f"  Runs: {runs}, Cooldown: {cooldown}s")
