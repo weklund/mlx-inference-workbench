@@ -45,8 +45,8 @@ markers = [
     "weekly: only runs in weekly scheduled CI",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "pytest-benchmark>=4.0",
     "ruff>=0.4.0",
