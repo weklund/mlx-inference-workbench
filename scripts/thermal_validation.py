@@ -175,7 +175,9 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
 
     if power_mode["powermode"] == 0:
         click.echo("⚠️  WARNING: Low Power Mode is active. Results will be throttled and invalid.")
-        click.echo("   Switch to High Performance mode: System Settings → Battery → Low Power Mode → Never")
+        click.echo(
+            "   Switch to High Performance mode: System Settings → Battery → Low Power Mode → Never"
+        )
         if not click.confirm("Continue anyway?"):
             raise SystemExit(1)
 
@@ -227,7 +229,7 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
             f.write(json.dumps(record) + "\n")
 
         click.echo(
-            f"  Run {i+1}/{runs}: {run_data['tok_per_sec']:.1f} tok/s "
+            f"  Run {i + 1}/{runs}: {run_data['tok_per_sec']:.1f} tok/s "
             f"({run_data['output_tokens']} tokens in {run_data['total_time_s']:.2f}s)"
         )
 

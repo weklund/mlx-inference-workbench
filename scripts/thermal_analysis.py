@@ -90,7 +90,9 @@ def main():
         click.echo("DAY-TO-DAY COMPARISON")
         for day_num in sorted(days.keys()):
             rates = days[day_num]
-            click.echo(f"  Day {day_num}: mean={np.mean(rates):.2f}, std={np.std(rates):.2f}, n={len(rates)}")
+            click.echo(
+                f"  Day {day_num}: mean={np.mean(rates):.2f}, std={np.std(rates):.2f}, n={len(rates)}"
+            )
 
         day_means = [np.mean(days[d]) for d in sorted(days.keys())]
         drift = abs(day_means[0] - day_means[1]) / np.mean(day_means) * 100
@@ -107,7 +109,9 @@ def main():
         for sess in ["morning", "afternoon", "evening"]:
             if sess in time_sessions:
                 rates = time_sessions[sess]
-                click.echo(f"  {sess:>10}: mean={np.mean(rates):.2f}, std={np.std(rates):.2f}, n={len(rates)}")
+                click.echo(
+                    f"  {sess:>10}: mean={np.mean(rates):.2f}, std={np.std(rates):.2f}, n={len(rates)}"
+                )
         click.echo()
 
     # Thermal correlation (if available)
@@ -123,7 +127,9 @@ def main():
         correlation = np.corrcoef(temps, rates_with_temp)[0, 1]
         click.echo("THERMAL CORRELATION")
         click.echo(f"  Pearson(die_temp, tok/s): {correlation:.3f}")
-        click.echo(f"  Interpretation: {'strong' if abs(correlation) > 0.7 else 'moderate' if abs(correlation) > 0.4 else 'weak'} correlation")
+        click.echo(
+            f"  Interpretation: {'strong' if abs(correlation) > 0.7 else 'moderate' if abs(correlation) > 0.4 else 'weak'} correlation"
+        )
         click.echo()
 
 
