@@ -21,7 +21,10 @@ COV_THRESHOLD = 5.0
 
 
 @click.command()
-def main():
+@click.option(
+    "--valid-only", is_flag=True, help="Exclude battery runs and runs without thermal data"
+)
+def main(valid_only: bool):
     """Analyze thermal reproducibility validation data."""
     if not RESULTS_FILE.exists():
         click.echo(f"No data found at {RESULTS_FILE}. Run thermal_validation.py first.")
@@ -37,6 +40,17 @@ def main():
     if not records:
         click.echo("No records found.")
         raise SystemExit(1)
+
+    if valid_only:
+        records = [
+            r
+            for r in records
+            if r.get("power_source") == "ac"
+            and r.get("thermal_before", {}).get("method") == "powermetrics"
+        ]
+        if not records:
+            click.echo("No valid records after filtering. Need AC + thermal data.")
+            raise SystemExit(1)
 
     click.echo("Phase 0.5: Thermal Reproducibility Analysis")
     click.echo(f"  Total runs: {len(records)}")
@@ -114,23 +128,52 @@ def main():
                 )
         click.echo()
 
-    # Thermal correlation (if available)
-    temps = []
-    rates_with_temp = []
+    # Thermal correlation (power draw vs tok/s)
+    cpu_power_before = []
+    combined_power_before = []
+    rates_with_power = []
     for r in records:
         tb = r.get("thermal_before", {})
-        if "die_temp_c" in tb:
-            temps.append(tb["die_temp_c"])
-            rates_with_temp.append(r["tok_per_sec"])
+        if tb.get("method") == "powermetrics" and "cpu_power_mw" in tb:
+            cpu_power_before.append(tb["cpu_power_mw"])
+            combined_power_before.append(tb.get("combined_power_mw", 0))
+            rates_with_power.append(r["tok_per_sec"])
 
-    if len(temps) >= 5:
-        correlation = np.corrcoef(temps, rates_with_temp)[0, 1]
-        click.echo("THERMAL CORRELATION")
-        click.echo(f"  Pearson(die_temp, tok/s): {correlation:.3f}")
+    if len(cpu_power_before) >= 5:
+        corr_cpu = np.corrcoef(cpu_power_before, rates_with_power)[0, 1]
+        corr_combined = np.corrcoef(combined_power_before, rates_with_power)[0, 1]
+        click.echo("POWER CORRELATION (pre-run power draw vs tok/s)")
+        click.echo(f"  Pearson(cpu_power_before, tok/s):      {corr_cpu:.3f}")
+        click.echo(f"  Pearson(combined_power_before, tok/s):  {corr_combined:.3f}")
+
+        def interpret(c):
+            return "strong" if abs(c) > 0.7 else "moderate" if abs(c) > 0.4 else "weak"
+
         click.echo(
-            f"  Interpretation: {'strong' if abs(correlation) > 0.7 else 'moderate' if abs(correlation) > 0.4 else 'weak'} correlation"
+            f"  Interpretation: CPU={interpret(corr_cpu)}, combined={interpret(corr_combined)}"
         )
         click.echo()
+
+    # Data quality summary
+    valid_records = [
+        r
+        for r in records
+        if r.get("power_source") == "ac"
+        and r.get("thermal_before", {}).get("method") == "powermetrics"
+    ]
+    invalid_records = [r for r in records if r not in valid_records]
+    click.echo("DATA QUALITY")
+    click.echo(f"  Valid runs (AC + thermal):   {len(valid_records)}")
+    click.echo(f"  Invalid runs (excluded):     {len(invalid_records)}")
+    if invalid_records:
+        reasons = set()
+        for r in invalid_records:
+            if r.get("power_source") != "ac":
+                reasons.add("battery")
+            if r.get("thermal_before", {}).get("method") != "powermetrics":
+                reasons.add("no thermal data")
+        click.echo(f"  Exclusion reasons: {', '.join(sorted(reasons))}")
+    click.echo()
 
 
 if __name__ == "__main__":

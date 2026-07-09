@@ -31,6 +31,9 @@ PROMPT = (
 )
 MAX_TOKENS = 256
 COOLDOWN_SEC = 30
+CPU_POWER_GATE_MW = 15000
+POWER_GATE_RETRIES = 3
+POWER_GATE_WAIT_SEC = 15
 SEED = 42
 
 
@@ -73,40 +76,52 @@ def get_power_source() -> str:
 
 
 def get_thermal_state() -> dict:
-    """Read chip temperature via powermetrics (requires sudo) or fallback."""
+    """Read thermal pressure and power draw via powermetrics (Apple Silicon)."""
     try:
         result = subprocess.run(
-            ["sudo", "powermetrics", "--samplers", "smc", "-i", "1", "-n", "1"],
+            [
+                "env",
+                "-u",
+                "TERMINFO",
+                "sudo",
+                "-n",
+                "powermetrics",
+                "--samplers",
+                "thermal,cpu_power,gpu_power",
+                "-i",
+                "1",
+                "-n",
+                "1",
+            ],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=10,
         )
-        lines = result.stdout.strip().split("\n")
-        temps = {}
-        for line in lines:
-            if "die temperature" in line.lower() or "cpu die" in line.lower():
-                parts = line.split(":")
-                if len(parts) == 2:
-                    try:
-                        temps["die_temp_c"] = float(parts[1].strip().split()[0])
-                    except (ValueError, IndexError):
-                        pass
-        if temps:
-            return {"method": "powermetrics", **temps}
-    except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
-        pass
+        if result.returncode != 0:
+            return {"method": "unavailable", "error": result.stderr.strip()[:200]}
 
-    try:
-        result = subprocess.run(
-            ["sysctl", "machdep.xcpm.cpu_thermal_level"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        if result.returncode == 0:
-            level = result.stdout.strip().split(":")[-1].strip()
-            return {"method": "sysctl_thermal_level", "thermal_level": int(level)}
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+        data = {"method": "powermetrics"}
+        for line in result.stdout.split("\n"):
+            line_lower = line.lower().strip()
+            if "current pressure level" in line_lower:
+                data["thermal_pressure"] = line.split(":")[-1].strip()
+            elif line_lower.startswith("cpu power:"):
+                try:
+                    data["cpu_power_mw"] = int(line.split(":")[1].strip().split()[0])
+                except (ValueError, IndexError):
+                    pass
+            elif line_lower.startswith("gpu power:") and "gpu_power_mw" not in data:
+                try:
+                    data["gpu_power_mw"] = int(line.split(":")[1].strip().split()[0])
+                except (ValueError, IndexError):
+                    pass
+            elif line_lower.startswith("combined power"):
+                try:
+                    data["combined_power_mw"] = int(line.split(":")[1].strip().split()[0])
+                except (ValueError, IndexError):
+                    pass
+        return data
+    except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
         pass
 
     return {"method": "unavailable"}
@@ -152,13 +167,33 @@ def run_single_inference(model, tokenizer) -> dict:
     }
 
 
+def wait_for_idle(gate_mw: int = CPU_POWER_GATE_MW) -> dict:
+    """Wait until CPU power drops below gate threshold, then return thermal state."""
+    for attempt in range(POWER_GATE_RETRIES + 1):
+        state = get_thermal_state()
+        cpu_mw = state.get("cpu_power_mw", 0)
+        if cpu_mw <= gate_mw:
+            return state
+        if attempt < POWER_GATE_RETRIES:
+            click.echo(
+                f"    CPU power {cpu_mw}mW > {gate_mw}mW gate — "
+                f"waiting {POWER_GATE_WAIT_SEC}s ({attempt + 1}/{POWER_GATE_RETRIES})"
+            )
+            time.sleep(POWER_GATE_WAIT_SEC)
+    click.echo("    CPU power still elevated after retries — proceeding (will tag as contested)")
+    return state
+
+
 @click.command()
 @click.option("--runs", default=5, help="Number of runs this session")
 @click.option("--session", type=click.Choice(["morning", "afternoon", "evening"]), required=True)
 @click.option("--day", type=int, required=True, help="Day number (1 or 2)")
 @click.option("--cooldown", default=COOLDOWN_SEC, help="Seconds between runs")
 @click.option("--model-id", default=MODEL_ID, help="HuggingFace model ID")
-def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
+@click.option(
+    "--power-gate", default=CPU_POWER_GATE_MW, help="Max CPU power (mW) before run starts"
+)
+def main(runs: int, session: str, day: int, cooldown: int, model_id: str, power_gate: int):
     """Run thermal reproducibility validation measurements."""
     from mlx_lm import load
 
@@ -169,6 +204,7 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
     click.echo(f"  Model: {model_id}")
     click.echo(f"  Session: Day {day}, {session}")
     click.echo(f"  Runs: {runs}, Cooldown: {cooldown}s")
+    click.echo(f"  Power gate: {power_gate}mW (auto-wait if CPU above this)")
     click.echo(f"  Power mode: {power_mode['powermode_label']} ({power_mode['powermode']})")
     click.echo(f"  Power source: {power_source}")
     click.echo()
@@ -204,7 +240,8 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
             click.echo(f"  Cooling down ({cooldown}s)...")
             time.sleep(cooldown)
 
-        thermal_before = get_thermal_state()
+        thermal_before = wait_for_idle(power_gate)
+        contested = thermal_before.get("cpu_power_mw", 0) > power_gate
         run_data = run_single_inference(model, tokenizer)
         thermal_after = get_thermal_state()
 
@@ -215,6 +252,8 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str):
             "run_index": i,
             "model_id": model_id,
             "cooldown_sec": cooldown,
+            "power_gate_mw": power_gate,
+            "contested": contested,
             "power_mode": power_mode["powermode"],
             "power_mode_label": power_mode["powermode_label"],
             "power_source": power_source,
