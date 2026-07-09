@@ -76,8 +76,7 @@ def load_dataset(
 
     if expected_hash is not None and actual != expected_hash.lower():
         raise ValueError(
-            f"Prompt dataset hash mismatch for {path.name}: "
-            f"expected {expected_hash}, got {actual}"
+            f"Prompt dataset hash mismatch for {path.name}: expected {expected_hash}, got {actual}"
         )
 
     items: list[PromptItem] = []
