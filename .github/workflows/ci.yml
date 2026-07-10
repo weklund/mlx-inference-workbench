@@ -41,8 +41,11 @@ jobs:
       - run: make lint
 
   lint-rust:
+    # macOS so clippy/doc typecheck the Metal host path (cfg(target_os = "macos")).
+    # Ubuntu would only see non-macOS stubs; product kernels live on Apple Silicon.
+    # Keep non-macOS stubs documented so linux-only tooling still passes if used.
     name: Lint (Rust)
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: check-rust
     if: needs.check-rust.outputs.has-rust == 'true'
     steps:

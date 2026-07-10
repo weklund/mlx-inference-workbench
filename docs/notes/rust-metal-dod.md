@@ -7,10 +7,14 @@
 
 | Gate | Local | Pre-commit | CI |
 |------|-------|------------|-----|
-| Format | `cargo fmt --all -- --check` | yes (`.rs` / Cargo / `.metal`) | lint-rust |
-| Lint | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | yes | lint-rust |
-| Docs | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps` | yes | lint-rust |
-| Tests | `cargo test --workspace` | yes | test-rust |
+| Format | `cargo fmt --all -- --check` | yes (`.rs` / Cargo / `.metal`) | lint-rust (**macos**) |
+| Lint | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | yes | lint-rust (**macos** — Metal path typechecked) |
+| Docs | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps` | yes | lint-rust (**macos**) |
+| Tests | `cargo test --workspace` | yes | test-rust (**macos**) |
+
+CI runs Rust lint on **macOS** so `cfg(target_os = "macos")` Metal host code is clippy'd.
+Cheap pure gates (Python ruff, commitlint, semver) stay on Ubuntu. Non-macOS stubs remain
+documented for local/linux tooling.
 
 ```bash
 make ci-rust    # fmt + clippy + doc + test
