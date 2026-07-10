@@ -11,15 +11,17 @@ from workbench.models import ENGINE_INTERFACE_VERSION, GenerationResult, Generat
 
 
 class EngineLoadError(Exception):
-    pass
+    """Model load or dependency failure before generation."""
 
 
 class GenerationError(Exception):
-    pass
+    """Failure during generate() (not wall-clock timeout)."""
 
 
 @dataclass(frozen=True)
 class GenParams:
+    """Per-call generation parameters (timeout is orchestrator policy)."""
+
     max_tokens: int
     temperature: float = 0.0
     seed: int = 42
@@ -39,18 +41,23 @@ class Engine(ABC):
     ENGINE_INTERFACE_VERSION = ENGINE_INTERFACE_VERSION
 
     @abstractmethod
-    def name(self) -> str: ...
+    def name(self) -> str:
+        """Stable backend id (e.g. ``mlx-lm``, ``stub``)."""
 
     @abstractmethod
-    def load_model(self, config: ModelConfig) -> None: ...
+    def load_model(self, config: ModelConfig) -> None:
+        """Load weights / tokenizer from ``config`` (once per experiment)."""
 
     @abstractmethod
-    def generate(self, prompt: str, params: GenParams) -> GenerationResult: ...
+    def generate(self, prompt: str, params: GenParams) -> GenerationResult:
+        """Run one generation; never enforce wall-clock timeout here."""
 
     def supports_speculative(self) -> bool:
+        """Whether this backend can report speculative acceptance metrics."""
         return False
 
     def get_memory_usage_bytes(self) -> int:
+        """Best-effort peak memory in bytes; 0 if unknown."""
         return 0
 
     def score_correctness(

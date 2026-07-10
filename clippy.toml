@@ -1,0 +1,16 @@
+# Clippy configuration for mlx-inference-workbench.
+# Lint levels live in workspace Cargo.toml `[workspace.lints.clippy]`.
+# This file holds *value* knobs only.
+
+# Slightly higher than default (25) for Metal host orchestration helpers.
+cognitive-complexity-threshold = 40
+
+# Allow short names common in STREAM / linear-algebra kernels.
+# (many_single_char_names is also allowed at the lint level.)
+allowed-idents-below-min-chars = ["a", "b", "c", "s", "n", "i", "j", "k", "x", "y", "dt"]
+
+# Disallow print! in library code; binaries may still use println! for CLI.
+# (enforced via pedantic print_stdout / print_stderr when applicable)
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-dbg-in-tests = true

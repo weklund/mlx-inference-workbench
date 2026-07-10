@@ -11,19 +11,24 @@ from workbench.models import GenerationResult, GenerationStatus, ThermalReading
 
 
 class StubEngine(Engine):
+    """Deterministic fake backend for CI and harness smoke tests."""
+
     def __init__(self) -> None:
         self._loaded: ModelConfig | None = None
         self._base_latency_s = 0.002
 
     def name(self) -> str:
+        """Return the stable backend id ``stub``."""
         return "stub"
 
     def load_model(self, config: ModelConfig) -> None:
+        """Accept only stub/fake backends; record config for generate."""
         if config.backend not in {"stub", "fake"}:
             raise EngineLoadError(f"StubEngine cannot load backend={config.backend!r}")
         self._loaded = config
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
+        """Return deterministic text with synthetic per-token timestamps."""
         self._ensure_loaded()
         n_tokens = min(params.max_tokens, 32)
         # Deterministic content from prompt+seed
@@ -32,7 +37,7 @@ class StubEngine(Engine):
 
         start = time.perf_counter()
         timestamps: list[float] = []
-        for i in range(n_tokens):
+        for _ in range(n_tokens):
             # small deterministic per-token delay
             time.sleep(self._base_latency_s)
             timestamps.append(time.perf_counter() - start)

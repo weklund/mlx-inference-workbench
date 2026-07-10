@@ -50,8 +50,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
+      # Parity with `make lint-rust` (pedantic workspace lints + rustdoc).
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
   # cargo-semver-checks needs a git baseline package. Skip publish=false crates and
   # packages that do not exist at the PR base (new crates — no prior API to break).

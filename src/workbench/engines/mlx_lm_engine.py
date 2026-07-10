@@ -11,15 +11,19 @@ from workbench.models import GenerationResult, GenerationStatus, ThermalReading
 
 
 class MlxLmEngine(Engine):
+    """Apple MLX language-model backend via the ``mlx-lm`` package."""
+
     def __init__(self) -> None:
         self._model: Any = None
         self._tokenizer: Any = None
         self._config: ModelConfig | None = None
 
     def name(self) -> str:
+        """Return the stable backend id ``mlx-lm``."""
         return "mlx-lm"
 
     def load_model(self, config: ModelConfig) -> None:
+        """Load model and tokenizer from ``config.model_id`` or ``config.name``."""
         try:
             from mlx_lm import load
         except ImportError as e:
@@ -35,6 +39,11 @@ class MlxLmEngine(Engine):
         self._config = config
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
+        """Generate with stream timestamps when available; else e2e-only.
+
+        Stream path fills ``token_timestamps`` and ``ttft_ms``. Non-stream
+        leaves timestamps empty and ``ttft_ms=None`` (honest e2e only).
+        """
         self._ensure()
         try:
             from mlx_lm import generate as mlx_generate

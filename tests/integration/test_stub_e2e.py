@@ -7,7 +7,6 @@ from workbench.orchestrator import run_experiment
 from workbench.statistics_compare import compare_runs
 from workbench.storage.run_store import RunStore
 
-
 REPO = Path(__file__).resolve().parents[2]
 
 

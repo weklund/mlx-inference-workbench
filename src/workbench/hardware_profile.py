@@ -31,6 +31,7 @@ class SpecPair:
         return float(min(vals))
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize including computed conservative ceiling."""
         return {
             "published": self.published,
             "empirical": self.empirical,
@@ -44,6 +45,8 @@ class SpecPair:
 
 @dataclass(frozen=True)
 class HardwareProfile:
+    """Published + empirical ceilings for one machine class (e.g. M5 Max)."""
+
     profile: str
     chip: str
     unified_memory_gb: float
@@ -55,9 +58,11 @@ class HardwareProfile:
     profile_version: str = "1.0"
 
     def bandwidth_ceiling_gbs(self) -> float | None:
+        """Conservative memory bandwidth ceiling in GB/s."""
         return self.memory_bandwidth_gbs.conservative()
 
     def flops_ceiling_tflops(self) -> float | None:
+        """Conservative FP32 FLOPS ceiling in TFLOPS."""
         return self.gpu_fp32_tflops.conservative()
 
 
@@ -75,7 +80,7 @@ def _pair_from_mapping(raw: Any, *, unit: str, default: SpecPair | None = None) 
     if raw is None:
         return default or SpecPair(published=None, empirical=None, unit=unit)
     if not isinstance(raw, dict):
-        raise ValueError(f"spec pair must be a mapping, got {type(raw).__name__}")
+        raise TypeError(f"spec pair must be a mapping, got {type(raw).__name__}")
 
     def _num(key: str) -> float | None:
         v = raw.get(key)
@@ -97,11 +102,22 @@ def _pair_from_mapping(raw: Any, *, unit: str, default: SpecPair | None = None) 
 
 
 def load_hardware_profile(path: Path) -> HardwareProfile:
+    """Load a hardware profile YAML (published vs empirical ceilings).
+
+    Args:
+        path: Path to the profile YAML.
+
+    Returns:
+        Parsed HardwareProfile.
+
+    Raises:
+        TypeError: If the YAML root is not a mapping.
+    """
     path = path.resolve()
     with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
-        raise ValueError(f"Hardware profile root must be a mapping: {path}")
+        raise TypeError(f"Hardware profile root must be a mapping: {path}")
 
     return HardwareProfile(
         profile=str(data.get("profile", path.stem)),

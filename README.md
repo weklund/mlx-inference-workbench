@@ -106,14 +106,17 @@ make help                        # list all developer/CI targets
 CI and local use the **same Makefile recipes** (do not re-copy long pytest lines):
 
 ```bash
-make lint          # ruff check + format --check
+make lint          # ruff check + format --check (explicit rule set; see docs/notes/python-lint.md)
 make test          # fast unit suite
 make coverage      # unit + ≥80% workbench cov + core module floors (merge gate)
 make ci            # lint + coverage (local mirror of required Python checks)
+make ci-rust       # rustfmt + clippy (pedantic) + rustdoc -D warnings + tests
 make smoke         # stub harness end-to-end
 ```
 
-Scripts, spikes, and CLI pretty-print are **not** in the hard gate. Details: [`docs/notes/coverage.md`](docs/notes/coverage.md).
+Scripts, spikes, and CLI pretty-print are **not** in the hard coverage gate. Details: [`docs/notes/coverage.md`](docs/notes/coverage.md).  
+Python lint/docs policy: [`docs/notes/python-lint.md`](docs/notes/python-lint.md).  
+Rust/Metal DoD: [`docs/notes/rust-metal-dod.md`](docs/notes/rust-metal-dod.md).
 
 ### 2. Running Benchmarks
 

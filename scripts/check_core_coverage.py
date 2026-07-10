@@ -14,8 +14,8 @@ Usage:
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
+import sys
 
 # Starting per-module floors (%). Keys match suffixes of coverage file paths.
 CORE_MODULE_FLOORS: dict[str, float] = {

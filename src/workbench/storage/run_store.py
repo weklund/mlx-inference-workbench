@@ -3,23 +3,27 @@
 from __future__ import annotations
 
 import json
-import uuid
 from pathlib import Path
 from typing import Any
+import uuid
 
 from workbench.models import DISTRIBUTION_METRIC_NAMES, MetricSummary, RunMetadata, RunRecord
 
 
 class RunStore:
+    """Filesystem-backed store for run summaries and iteration JSONL."""
+
     def __init__(self, root: Path, *, enable_mlflow: bool = True) -> None:
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.enable_mlflow = enable_mlflow
 
     def new_run_id(self) -> str:
+        """Allocate a short unique run id (12 hex chars)."""
         return uuid.uuid4().hex[:12]
 
     def run_dir(self, run_id: str) -> Path:
+        """Directory for one run under the store root."""
         return self.root / run_id
 
     def write(self, record: RunRecord) -> RunRecord:
@@ -60,6 +64,11 @@ class RunStore:
         return record
 
     def load(self, run_id: str) -> RunRecord:
+        """Load a previously written run by id.
+
+        Raises:
+            FileNotFoundError: If summary.json is missing.
+        """
         d = self.run_dir(run_id)
         summary_path = d / "summary.json"
         if not summary_path.is_file():
@@ -70,9 +79,11 @@ class RunStore:
         iterations: list[dict[str, Any]] = []
         iter_path = d / "iterations.jsonl"
         if iter_path.is_file():
-            for line in iter_path.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    iterations.append(json.loads(line))
+            iterations.extend(
+                json.loads(line)
+                for line in iter_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            )
         return RunRecord(
             metadata=meta,
             metrics=metrics,
@@ -82,6 +93,7 @@ class RunStore:
         )
 
     def list_runs(self) -> list[dict[str, Any]]:
+        """Return lightweight row dicts for each run with a summary.json."""
         rows = []
         if not self.root.is_dir():
             return rows

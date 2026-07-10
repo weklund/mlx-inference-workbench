@@ -36,6 +36,163 @@ bench = "benchmarks.cli:main"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+src = ["src", "benchmarks", "scripts", "tests"]
+extend-exclude = [
+    ".venv",
+    "target",
+    "benchmarks/results",
+    "results_archive",
+    "models",
+]
+
+[tool.ruff.lint]
+# Explicit select (prefer select over extend-select so upgrades don't surprise us).
+# Phase A hygiene + Google-style public docs. Noisy scientific/security groups omitted
+# or scoped via per-file-ignores (see docs/notes/python-lint.md).
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "RET",    # flake8-return
+    "RUF",    # Ruff-specific
+    "PTH",    # flake8-use-pathlib
+    "PERF",   # perflint
+    "FA",     # flake8-future-annotations
+    "D",      # pydocstyle (Google via pydocstyle.convention)
+    "N",      # pep8-naming
+    "A",      # flake8-builtins
+    "T20",    # flake8-print (library code must not print)
+    "C90",    # mccabe complexity
+    "PL",     # pylint subset (complexity / redefine / etc.)
+    "TRY",    # tryceratops (exceptions) — some ignores below
+    "BLE",    # blind-except
+    "ARG",    # unused arguments
+    "ERA",    # commented-out code
+    "G",      # logging format
+    "ICN",    # import conventions
+    "ISC",    # implicit string concat
+    "LOG",    # logging
+    "Q",      # quotes (aligned with formatter)
+    "SLOT",   # unnecessary __slots__
+    "TID",    # flake8-tidy-imports
+    "FLY",    # flynt
+    "FURB",   # refurb
+    "DTZ",    # datetime timezone
+]
+ignore = [
+    # Formatter owns wrapping; E501 fights long scientific messages/docstrings.
+    "E501",
+    # Google convention conflicts (Ruff auto-ignores one of each pair; be explicit).
+    "D203",  # one-blank-line-before-class (prefer D211)
+    "D213",  # multi-line-summary-second-line (prefer D212)
+    # Dataclass / Protocol heavy codebase: field comments > __init__ docstrings.
+    "D107",
+    # Exception message style (TRY003/EM) is high churn / low scientific value.
+    "TRY003",
+    # Magic numbers are thresholds in measurement code; name them when policy, not always.
+    "PLR2004",
+    # Lazy imports are intentional for optional mlx / mlflow / metal backends.
+    "PLC0415",
+    # Too pedantic for small scientific helpers; C901 still covers real complexity.
+    "PLR0913",
+    "PLR0915",
+    # Boolean positional args appear in CLI and measurement APIs; keyword-only later.
+    "FBT001",
+    "FBT002",
+    # Scientific prose uses ×, –, etc.; ASCII substitutions hurt readability.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: asserts, fixtures, mocks (e.g. mlx-like `class random`), free-form docs.
+"tests/**" = [
+    "D",
+    "S101",
+    "ARG",
+    "PLR0913",
+    "PLR0915",
+    "T20",
+    "BLE001",
+    "N801",
+    "N802",
+    "N803",
+    "N806",
+    "C408",
+]
+# Scripts / CLI: prints, subprocess, and ad-hoc analysis complexity are OK.
+"scripts/**" = [
+    "D",
+    "T201",
+    "T203",
+    "BLE001",
+    "S603",
+    "S607",
+    "TRY300",
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "PLW1510",
+    "PLW2901",
+    "C901",
+    "PTH123",
+    "SIM105",
+    "DTZ011",
+]
+"benchmarks/cli.py" = [
+    "T201",
+    "T203",
+    "BLE001",
+    "D103",
+]
+# Deprecated import shims raise on import — no public API to document.
+"benchmarks/harness.py" = ["D"]
+"benchmarks/metrics.py" = ["D"]
+"benchmarks/run_benchmark.py" = ["D"]
+# Empty / reserved package markers (Phase 2+).
+"src/__init__.py" = ["D104"]
+"src/hardware/**" = ["D"]
+"src/profiling/**" = ["D"]
+"src/utils/**" = ["D"]
+"kernels/**" = ["D"]
+# Engine fallbacks intentionally swallow optional Metal/MLX probe failures.
+"src/workbench/engines/mlx_lm_engine.py" = ["BLE001", "S110"]
+"src/workbench/thermal.py" = ["S603", "S607", "ARG002", "TRY301"]
+"src/workbench/hardware.py" = ["S603", "S607", "PLW1510"]
+"src/workbench/ceilings.py" = ["S603", "S607", "PLW1510"]
+"src/workbench/storage/run_store.py" = ["BLE001"]
+"src/workbench/orchestrator.py" = ["BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["workbench", "benchmarks"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 16
+max-returns = 8
+max-statements = 60
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [dependency-groups]
 dev = [
