@@ -25,7 +25,7 @@ Re-verify before implementing a plugin: ecosystem moves quickly; pins go stale.
 
 ## Purpose (this workbench)
 
-We measure **single-run, comparable, scientific** text LLM inference on Apple Silicon via the `Engine` ABC — not multi-tenant serving products.
+We measure **single-user, single-stream** (one request at a time) text LLM inference on Apple Silicon via the `Engine` ABC — not multi-tenant continuous batching. Experiments still use **warmup plus repeated timed iterations** so complete-run comparisons are statistical, not one-shot.
 
 | In scope for plugins | Out of scope as product goals (HLD §7) |
 |----------------------|----------------------------------------|
