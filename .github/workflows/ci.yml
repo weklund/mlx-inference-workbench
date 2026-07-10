@@ -48,10 +48,9 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
 
-  # cargo-semver-checks needs a baseline (crates.io or git). Workspace tools with
-  # `publish = false` (e.g. metal_stream) are not on crates.io — skip those.
-  # When a publishable library exists, compare against the PR base revision so
-  # first-party crates do not require a crates.io release yet.
+  # cargo-semver-checks needs a git baseline package. Skip publish=false crates and
+  # packages that do not exist at the PR base (new crates — no prior API to break).
+  # Existing publishable crates are checked with --baseline-rev (no crates.io required).
   semver-check:
     name: API Compatibility (cargo-semver-checks)
     runs-on: ubuntu-latest
@@ -64,22 +63,37 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Detect publishable workspace packages
         id: pubs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
+          ROOT="$(pwd)"
           # publish == null → default (publishable); publish == [] → publish = false
-          PKGS=$(cargo metadata --no-deps --format-version=1 | jq -r '
+          # Only keep packages whose Cargo.toml exists at the PR base (check-release
+          # needs a baseline API; brand-new crates are logged and skipped).
+          KEEP=""
+          while IFS="$(printf '\t')" read -r name manifest; do
+            [ -z "${name:-}" ] && continue
+            rel="${manifest#"$ROOT"/}"
+            if git cat-file -e "${BASE}:${rel}" 2>/dev/null; then
+              KEEP="${KEEP}${KEEP:+ }${name}"
+              echo "Include $name (manifest exists at baseline: $rel)"
+            else
+              echo "Skip $name — new package (no $rel at baseline $BASE); not running check-release"
+            fi
+          done < <(cargo metadata --no-deps --format-version=1 | jq -r '
             .packages[]
             | select(.source == null)
             | select(.publish == null or (.publish | length > 0))
-            | .name
-          ' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
-          if [ -z "$PKGS" ]; then
+            | "\(.name)\t\(.manifest_path)"
+          ')
+          if [ -z "$KEEP" ]; then
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "No publishable packages (all publish = false). Skipping cargo-semver-checks."
+            echo "No publishable packages present at baseline. Skipping cargo-semver-checks."
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "packages=$PKGS" >> "$GITHUB_OUTPUT"
-            echo "Will check: $PKGS"
+            echo "packages=$KEEP" >> "$GITHUB_OUTPUT"
+            echo "Will check: $KEEP"
           fi
       - name: Install cargo-semver-checks
         if: steps.pubs.outputs.run == 'true'
@@ -88,9 +102,10 @@ jobs:
           tool: cargo-semver-checks
       - name: Check API compatibility vs PR base
         if: steps.pubs.outputs.run == 'true'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          BASE="${{ github.event.pull_request.base.sha }}"
           for pkg in ${{ steps.pubs.outputs.packages }}; do
             echo "::group::semver-checks $pkg (baseline $BASE)"
             cargo semver-checks check-release -p "$pkg" --baseline-rev "$BASE"
