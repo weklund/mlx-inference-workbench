@@ -49,7 +49,17 @@ We measure **single-user, single-stream** (one request at a time) text LLM infer
 
 Also: ≥2 valid iterations per side for distribution compare; `quality_tag=insufficient_data` blocks.
 
-**Implication:** A project can be an excellent *local server* and still be a **poor** first Engine plugin if it only exposes HTTP, batches many users, or hides per-token timing. Prefer libraries (or servers with a clear single-request programmatic path) that we can drive under our orchestrator **and** that can populate the metadata above.
+**Server-candidate controls (pass/fail for single-request scientific tests).** HTTP / “engine” servers (Rapid-MLX, oMLX, vllm-mlx, mlx-serve, omni/LM Studio wrappers, etc.) must be validated **before** treating timings as comparable to mlx-lm. Each item is binary **pass** or **fail**; any **fail** → do not file as an official Engine plugin / do not publish thruput claims against stock mlx-lm.
+
+| Control | Pass | Fail | Record in run metadata (e.g. notes / tags / engine config snapshot) |
+|---------|------|------|---------------------------------------------------------------------|
+| **Batching** | Continuous / multi-request batching **disabled**, or forced to **max_batch=1** / single-slot so only one request is in flight | Default multi-user continuous batching left on; concurrent load mixed into timed iters | `batching=off` or `max_batch=1` (+ how enforced) |
+| **Cache state** | Explicit **cold** (empty prompt/prefix/KV/disk tier) **or** **warm** (defined warmup protocol); same label for all iters in a compare arm | Ambiguous cache; “feels fast after first call” without cold/warm label | `cache_state=cold\|warm` + protocol (e.g. process restart, cache flush API) |
+| **Cloud / remote routing** | Inference is **local-only**; no cloud fallback, remote proxy, or hybrid offload of the timed path | Any cloud/remote routing on the measured generate path | `routing=local` (and disable flags used) |
+
+These controls are **in addition** to the comparability gate table above. Prefer libraries that expose them as config; for opaque servers, prove controls via docs + experiment protocol and still write them into metadata.
+
+**Implication:** A project can be an excellent *local server* and still be a **poor** first Engine plugin if it only exposes HTTP, batches many users, or hides per-token timing. Prefer libraries (or servers with a clear single-request programmatic path) that we can drive under our orchestrator **and** that can populate the metadata above **and** pass the server controls.
 
 Related **non-MLX** compare arms (still HLD / M2): **llama.cpp** Metal (#15), **BaseRT** (API TBD), **Custom kernel** (M3). **MTPLX** (#9) is MLX-adjacent speculative stack — keep as first multi-backend target.
 
@@ -116,25 +126,29 @@ Multimodal text+vision is separate (**mlx-vlm**); not primary for this catalog.
 
 ## High-performance / advanced (often servers)
 
-| Project | Focus | Fit for our harness | Plugin priority | Provenance |
-|---------|--------|---------------------|-----------------|------------|
-| **Rapid-MLX** (raullenchai) | Fast OpenAI/Anthropic-compatible; tool calling; prompt caching; strong agent TTFT claims | Likely **HTTP server** — evaluate programmatic/single-req path; good *external* benchmark peer | **Evaluate (M2)** | Master pin: tip `753ba5b1…`, release **v0.10.5** |
-| **oMLX** (jundot) | Continuous batching + paged/SSD KV; long agent sessions; menu bar app | Serving + disk KV — continuous batching is HLD §7 product-out; **prefix/SSD cache ideas** inform EXP #10 / #12 | **Research / metrics ideas** | Master pin: tip `2130f14a…`, release **v0.5.0** |
-| **vllm-mlx** (waybarrios) | vLLM-style continuous batching, paged KV, prefix cache | Throughput/serving oriented; multi-req not our default UC | **Low for plugin** | Master pin: tip `0dd11576…`, release **v0.4.0** |
-| **mlx-serve** (ddalcu) | Zig native; MLX (+ GGUF); OpenAI/Anthropic/Ollama APIs; speculative mentions | Native binary — similar to llama.cpp subprocess pattern | **Evaluate (M2)** if single-req timings are exportable | Master pin: tip `1f9be78e…`, release **v26.7.5** |
+**Server controls required for any thruput claim:** batching **pass** · cache cold/warm **pass** · local routing **pass** (see Purpose table). Status below is pre-checklist; re-eval only after those three pass/fail columns are recorded in run metadata.
+
+| Project | Focus | Fit for our harness | Plugin priority | Server controls (batch / cache / routing) | Provenance |
+|---------|--------|---------------------|-----------------|-------------------------------------------|------------|
+| **Rapid-MLX** (raullenchai) | Fast OpenAI/Anthropic-compatible; tool calling; prompt caching; strong agent TTFT claims | HTTP server — single-req path TBD | **Evaluate (M2)** | **Must pass** all three; prompt-cache claims need explicit cold vs warm arms | Master pin: tip `753ba5b1…`, release **v0.10.5** |
+| **oMLX** (jundot) | Continuous batching + paged/SSD KV; long agent sessions | Serving defaults conflict with single-stream; SSD/prefix ideas → EXP #10/#12 | **Research / metrics ideas** | Batching **fail** if continuous batch left on; cache/SSD tier **must** label cold/warm; routing **local** only | Master pin: tip `2130f14a…`, release **v0.5.0** |
+| **vllm-mlx** (waybarrios) | vLLM-style continuous batching, paged KV | Multi-req not our default UC | **Low for plugin** | Same: batching off or max_batch=1 **required**; else **fail** for official compare | Master pin: tip `0dd11576…`, release **v0.4.0** |
+| **mlx-serve** (ddalcu) | Zig native; MLX (+ GGUF); multi API surfaces | Subprocess pattern if timings exportable | **Evaluate (M2)** | **Must pass** all three before plugin issue | Master pin: tip `1f9be78e…`, release **v26.7.5** |
 
 ---
 
 ## API-compatible / omni servers
 
-| Project | Focus | Plugin priority | Provenance |
-|---------|--------|-----------------|------------|
-| **mlx-omni-server** (madroidmaq) | Dual OpenAI + Anthropic APIs | Evaluate if thin wrapper over mlx-lm (may duplicate #7) | Master pin: **v0.5.3** / `4f8e9ef6…` |
-| **MLX Engine** (lmstudio-ai) | Production backend behind LM Studio | **Evaluate** for parity claims; path may be app-bound | Master pin: commit only (no GH release) `8ae26103…` |
-| **fastmlx** (arcee-ai) | Production-ready API server | Low unless unique measurement surface | Master pin: tip stale relative to release **v0.2.1** (2024); re-check activity |
-| **mlx-llm-server** (mzbac) | OpenAI-compatible server | Low (thin server; quiet since 2024) | Master pin: `f37dad7d…`, no release |
-| **mlx-openai-server** (cubist38) | Simple OpenAI endpoints | Low (thin server) | Master pin: **v1.8.1** / `4b7d4b61…` |
-| **Toolio** (OoriData) | JSON-schema / tool-calling with MLX | **Adjacent** — structured-output EXP | Master pin: **v0.6.0** / `a1e45973…` · status **oos** for thruput plugins |
+Same **server controls** as high-performance section (batching / cache state / local routing). Thin OpenAI wrappers often fail “distinct scientific question” even when controls pass.
+
+| Project | Focus | Plugin priority | Server controls (batch / cache / routing) | Provenance |
+|---------|--------|-----------------|-------------------------------------------|------------|
+| **mlx-omni-server** (madroidmaq) | Dual OpenAI + Anthropic APIs | Evaluate if not just mlx-lm HTTP skin | **Must pass** all three; metadata snapshot of flags | Master pin: **v0.5.3** / `4f8e9ef6…` |
+| **MLX Engine** (lmstudio-ai) | Production backend behind LM Studio | **Evaluate** if scriptable outside app | **Must pass** all three; cloud/account routing **fail** if any remote path | Master pin: commit only `8ae26103…` |
+| **fastmlx** (arcee-ai) | Production-ready API server | Low unless unique surface | **Must pass** all three | Master pin: **v0.2.1** era tip `1fe5d766…` |
+| **mlx-llm-server** (mzbac) | OpenAI-compatible server | Low (thin; quiet since 2024) | **Must pass** all three if revived | Master pin: `f37dad7d…`, no release |
+| **mlx-openai-server** (cubist38) | Simple OpenAI endpoints | Low (thin server) | **Must pass** all three | Master pin: **v1.8.1** / `4b7d4b61…` |
+| **Toolio** (OoriData) | JSON-schema / tool-calling | **Adjacent** — structured-output EXP | Controls apply if used for thruput; else N/A for non-thruput EXP | Master pin: **v0.6.0** / `a1e45973…` · **oos** thruput |
 
 ---
 
@@ -176,14 +190,26 @@ Multimodal text+vision is separate (**mlx-vlm**); not primary for this catalog.
 
 For each candidate (re-fetch pin on the day you start work):
 
+**Core**
+
 - [ ] Can we invoke **one** generation with fixed seed/temp under our orchestrator?
 - [ ] Can we get stream timestamps or honest e2e-only metrics (no fabricated TTFT)?
 - [ ] Library versions + model id pinable for `library_versions` / reproducibility?
 - [ ] License OK for this personal/research workbench?
 - [ ] Does it add a **distinct** scientific question vs another plugin (not just another OpenAI wrapper over mlx-lm)?
 - [ ] Catalog **pin commit/release** re-verified; evidence links updated?
+- [ ] Comparability metadata populated (prompt SHA-256, hardware profile, schemas, thermal class, OS/libraries)?
 
-Pass → file `Phase 2: <name> engine plugin` under **M2**, citing the pin in the issue.  
+**Server / HTTP / multi-feature engines only** (Rapid-MLX, oMLX, vllm-mlx, mlx-serve, omni, LM Studio engine, fastmlx, thin OpenAI servers, …) — each **pass/fail**:
+
+- [ ] **Batching:** continuous / multi-request batching **disabled** or controlled to **single-request** (`max_batch=1` / one slot); evidence recorded → **pass** / **fail**
+- [ ] **Cache:** state explicitly **cold** or **warm** for the experiment arm; protocol written into run metadata → **pass** / **fail**
+- [ ] **Routing:** cloud / remote / hybrid offload **disabled** on the timed path; local-only confirmed → **pass** / **fail**
+- [ ] Run metadata (notes/tags/engine config snapshot) includes `batching=…`, `cache_state=cold|warm`, `routing=local` (or equivalent)
+
+Any server-control **fail** → do **not** open a thruput Engine issue and do **not** publish official compares to mlx-lm until fixed.
+
+Pass (all applicable boxes) → file `Phase 2: <name> engine plugin` under **M2**, citing the pin **and** the three server-control outcomes.  
 Fail → leave in this catalog as watchlist / peer only; set status + next review.
 
 ---
