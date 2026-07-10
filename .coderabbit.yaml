@@ -1,0 +1,206 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Scientific workbench: rigor, reproducibility, SOLID/DRY, clear PR narrative.
+# In-repo config overrides Organization UI when present on the PR branch.
+
+language: "en-US"
+tone_instructions: >
+  Review like a senior staff engineer reviewing a scientific measurement system.
+  Prioritize correctness of metrics, reproducibility, experimental integrity, and
+  maintainable architecture (SOLID/DRY). Be direct and assertive on issues that
+  could produce non-comparable results, silent bias, or unmaintainable harness
+  code. Skip pure style nits already covered by ruff/clippy/rustfmt.
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+
+  # --- PR / reader UX --------------------------------------------------------
+  high_level_summary: true
+  high_level_summary_instructions: >
+    Write for a technical reader who did not author the PR. Include:
+    (1) scientific/measurement intent in one sentence,
+    (2) what changed (layers: harness, engines, kernels, configs, docs),
+    (3) how to verify (make targets / tests),
+    (4) reproducibility notes (configs, datasets/hashes, seeds, hardware profile,
+        library versions if relevant),
+    (5) explicit non-goals / out of scope.
+    Prefer structured bullets over marketing language.
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: false
+  changed_files_summary: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  poem: false
+  review_status: true
+  review_details: true
+  in_progress_fortune: false
+
+  path_filters:
+    - "!uv.lock"
+    - "!Cargo.lock"
+    - "!**/*.jsonl"
+    - "!**/target/**"
+    - "!.venv/**"
+    - "!**/.coverage"
+    - "!**/coverage.json"
+    - "!mlruns/**"
+    - "!benchmarks/results/**"
+
+  path_instructions:
+    - path: "src/workbench/**"
+      instructions: >
+        This is the scientific core of a benchmarking harness. Flag anything that
+        risks non-comparable results: fabricated metrics (e.g. invented TTFT/token
+        timestamps), silent retries, weak correctness gates, stringly-typed metrics,
+        god-object orchestrators, or engines leaking into the orchestrator.
+        Prefer dependency inversion (Engine ABC), single metric definitions, and
+        fail-closed behavior on hash/config/correctness failures. Tests should lock
+        behavior/contracts, not private implementation details. Do not re-lint style
+        already enforced by ruff.
+
+    - path: "crates/**"
+      instructions: >
+        Rust/Metal kernel layer: correctness before performance. Require host-oracle
+        or equivalent validation for MSL kernels. Never insist on absolute GB/s or
+        TFLOPS unit-test thresholds (machine-dependent). Prefer Result over unwrap
+        in library paths. Flag duplicated host/dispatch logic; keep STREAM/ceiling
+        measurement methodology explicit and honest (published vs empirical).
+
+    - path: "configs/**"
+      instructions: >
+        Experiment and hardware configs are part of the reproducibility record.
+        Flag missing schema_version, unclear model_id/backend, disabled checksums
+        without reason, or thermal/seed settings that undermine claimed rigor.
+        Conservative hardware ceilings should not silently use marketing peaks
+        when empirical exists.
+
+    - path: "datasets/**"
+      instructions: >
+        Datasets are immutable scientific artifacts. Flag checksum/policy gaps,
+        silent prompt rewrites, or harness changes that break hash comparability
+        without a version bump.
+
+    - path: "tests/**"
+      instructions: >
+        Prefer behavioral and contract tests (oracles, gates, comparability).
+        Reject brittle tests that only assert call counts or exact floating
+        performance. GPU/Metal tests may soft-skip off-macOS with a clear error.
+
+    - path: "scripts/**"
+      instructions: >
+        Scripts are measurement tools (thermal, ceilings). Flag unclear methodology,
+        missing write-up of conditions (AC, power mode), or overwriting protocol
+        data without exploratory tagging.
+
+    - path: "docs/**"
+      instructions: >
+        Docs should help a future reader reproduce or understand claims. Prefer
+        clear DoD, methodology, and caveats over vanity completeness. Spikes need
+        not meet application docstring % thresholds. Flag contradictions with HLD
+        or silent removal of hard-gate language.
+
+    - path: ".github/workflows/**"
+      instructions: >
+        CI must preserve scientific gates (Python coverage, Rust fmt/clippy/test).
+        Flag changes that weaken merge protection or skip tests without explanation.
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    ignore_title_keywords:
+      - "wip"
+      - "do not review"
+
+  suggested_labels: true
+  labeling_instructions:
+    - label: "area/harness"
+      instructions: "Changes to workbench orchestrator, metrics, storage, config, CLI."
+    - label: "area/kernels"
+      instructions: "Rust/Metal crates, MSL shaders, kernel micro-benches, ceilings probes."
+    - label: "phase/gate"
+      instructions: "Thermal, hardware ceilings, coverage, or other hard-gate methodology."
+    - label: "documentation"
+      instructions: "Primarily docs/spikes/HLD/TASKS with little production code."
+  auto_apply_labels: false
+
+  pre_merge_checks:
+    # Application docstring % fights spikes/scripts; rigor is oracles, hashes, configs.
+    docstrings:
+      mode: "off"
+    title:
+      mode: "warning"
+      requirements: >
+        Prefer conventional commits (feat:, fix:, ci:, docs:, refactor:). Title should
+        state the scientific or harness outcome, not only the mechanism
+        (e.g. "add metal stream bandwidth ceiling" not "update stuff").
+    description:
+      mode: "warning"
+    issue_assessment:
+      mode: "warning"
+    custom_checks:
+      - name: "Reproducibility narrative"
+        mode: "warning"
+        instructions: >
+          PASS if the PR description or walkthrough states how a reader can reproduce
+          or verify the change (commands, configs, datasets, or explicit "docs-only /
+          no measurement change"). FAIL if the PR changes measurement code, configs,
+          datasets, or kernels with no verification or reproducibility notes.
+      - name: "Measurement honesty"
+        mode: "warning"
+        instructions: >
+          PASS if performance/metric code does not invent timestamps, acceptance rates,
+          or bandwidth %, and distinguishes published vs empirical ceilings where relevant.
+          FAIL if the diff introduces fabricated metrics, silent success on missing data,
+          or claims "peak" without methodology.
+      - name: "Architecture (SOLID/DRY)"
+        mode: "warning"
+        instructions: >
+          PASS if new code respects existing boundaries (orchestrator vs engine vs metrics
+          vs storage) or clearly documents a deliberate boundary change. FAIL if the PR
+          adds a second source of truth for metrics/comparability, hard-wires a backend
+          into the orchestrator, or duplicates substantial logic that should be shared.
+
+  tools:
+    ruff:
+      enabled: true
+    flake8:
+      enabled: false
+    pylint:
+      enabled: false
+    clippy:
+      enabled: true
+    gitleaks:
+      enabled: true
+    actionlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: false
+    shellcheck:
+      enabled: true
+
+chat:
+  auto_reply: true
+  art: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "docs/HLD.md"
+      - "docs/notes/rust-metal-dod.md"
+      - "docs/notes/coverage.md"
+      - "docs/notes/tdd-process.md"
+      - "docs/notes/phase1-architecture.md"
+      - "**/CLAUDE.md"
+      - "**/AGENTS.md"
+  learnings:
+    scope: "local"
+  web_search:
+    enabled: true
