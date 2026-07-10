@@ -9,6 +9,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: checkout + local tooling only. No job opens PRs, pushes,
+# uploads packages, or mutates checks beyond the default job status.
+permissions:
+  contents: read
+
 jobs:
   check-rust:
     name: Check for Rust code
