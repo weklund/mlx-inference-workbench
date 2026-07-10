@@ -101,9 +101,7 @@ def test_generate_with_timeout_returns_timeout_status():
 
 def test_timeout_path_does_not_block_on_worker_shutdown():
     """
-    Regression: context-managed ThreadPoolExecutor waits for workers on exit,
-    so a hung generate() would block long after the deadline. Timeout must
-    return near the deadline, not after the full worker sleep.
+    Hung generate() must not delay the TIMEOUT return (no join on the worker).
     """
     import time
 
@@ -129,3 +127,54 @@ def test_timeout_path_does_not_block_on_worker_shutdown():
     # Allow some scheduling slack, but must not wait for the full worker sleep.
     assert elapsed < worker_sleep_s * 0.6
     assert elapsed < deadline_s + 0.5
+
+
+def test_timeout_worker_is_daemon():
+    """Daemon workers do not block interpreter/CLI shutdown after TIMEOUT."""
+    import threading
+    import time
+
+    from workbench.engines.timeout import generate_with_timeout
+
+    started = threading.Event()
+
+    class SlowEngine:
+        def generate(self, prompt, params):
+            started.set()
+            time.sleep(2.0)
+            return _ok_result()
+
+    before = {t.ident for t in threading.enumerate()}
+    result = generate_with_timeout(
+        SlowEngine(),  # type: ignore[arg-type]
+        "p",
+        GenParams(max_tokens=4, timeout_sec=0.1),
+    )
+    assert result.status == GenerationStatus.TIMEOUT
+    assert started.wait(timeout=1.0)
+
+    workers = [
+        t
+        for t in threading.enumerate()
+        if t.ident not in before and t.name == "workbench-generate-timeout"
+    ]
+    assert workers, "expected timeout worker thread still alive after TIMEOUT"
+    assert all(t.daemon for t in workers)
+
+
+def test_generate_with_timeout_propagates_worker_errors():
+    from workbench.engines.timeout import generate_with_timeout
+
+    class BoomEngine:
+        def generate(self, prompt, params):
+            raise RuntimeError("engine boom")
+
+    try:
+        generate_with_timeout(
+            BoomEngine(),  # type: ignore[arg-type]
+            "p",
+            GenParams(max_tokens=4, timeout_sec=1.0),
+        )
+        raise AssertionError("expected RuntimeError")
+    except RuntimeError as e:
+        assert "engine boom" in str(e)
