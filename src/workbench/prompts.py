@@ -16,6 +16,15 @@ class PromptItem:
     expected_tokens_approx: int | None = None
     # Optional expected output for the correctness gate (temp=0 / fixed seed).
     reference: str | None = None
+    # Optional system / developer preamble retained through generation.
+    system_prompt: str | None = None
+
+    def generation_text(self) -> str:
+        """Text passed to engines: optional system_prompt, then user prompt."""
+        system = (self.system_prompt or "").strip()
+        if not system:
+            return self.prompt
+        return f"{system}\n\n{self.prompt}"
 
 
 @dataclass(frozen=True)
@@ -25,7 +34,8 @@ class PromptDataset:
     sha256: str
 
     def prompts(self) -> list[str]:
-        return [p.prompt for p in self.items]
+        """Generation strings (includes system_prompt when set)."""
+        return [p.generation_text() for p in self.items]
 
 
 def sha256_file(path: Path) -> str:
@@ -93,6 +103,9 @@ def load_dataset(
                 raise ValueError(f"Invalid JSONL at line {i}: {e}") from e
             ref_raw = obj.get("reference")
             reference = None if ref_raw is None else str(ref_raw)
+            # Prefer system_prompt; accept legacy key "system" as alias.
+            sys_raw = obj.get("system_prompt", obj.get("system"))
+            system_prompt = None if sys_raw is None else str(sys_raw)
             items.append(
                 PromptItem(
                     id=str(obj["id"]),
@@ -100,6 +113,7 @@ def load_dataset(
                     prompt=str(obj["prompt"]),
                     expected_tokens_approx=obj.get("expected_tokens_approx"),
                     reference=reference,
+                    system_prompt=system_prompt,
                 )
             )
 

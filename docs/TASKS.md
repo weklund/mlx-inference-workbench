@@ -145,8 +145,8 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ### Prompt Dataset
 - [x] Smoke dataset + SHA-256 (`datasets/smoke_v1.jsonl`) for harness CI
-- [ ] Curate ~20 agentic coding prompts — tracked as [#6](https://github.com/weklund/mlx-inference-workbench/issues/6)
-- [ ] Document dataset v1 in datasets/README.md — with #6
+- [x] Curate ≥20 agentic coding prompts — `datasets/agentic_coding_v1.jsonl` ([#6](https://github.com/weklund/mlx-inference-workbench/issues/6))
+- [x] Document versioning + checksum policy in `datasets/README.md`
 
 ### M5 Max Hardware Verification (HARD GATE for roofline)
 - [ ] Find Apple's published M5 Max specs (memory bandwidth, GPU cores, TFLOPS)

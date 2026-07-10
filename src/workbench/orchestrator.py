@@ -98,7 +98,8 @@ def run_experiment(
     items = list(dataset.items)
     if config.benchmark.max_prompts is not None:
         items = items[: config.benchmark.max_prompts]
-    prompts = [i.prompt for i in items]
+    # Include optional system_prompt so it is retained through generation.
+    prompts = [i.generation_text() for i in items]
 
     # Hardware + thermal (inject for tests; production builds from config)
     fingerprint = capture_fingerprint(config.hardware_profile)
