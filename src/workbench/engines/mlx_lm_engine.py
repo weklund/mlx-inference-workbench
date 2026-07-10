@@ -48,13 +48,13 @@ class MlxLmEngine(Engine):
             else make_sampler(temp=0.0)
         )
 
-        # Token-level timestamps: measured via stream when available; otherwise
-        # synthesize uniform splits from e2e (must not be reported as measured TTFT).
+        # Stream path: measured per-token timestamps + TTFT.
+        # Non-stream path: wall-clock e2e only (no fabricated token times / TTFT).
         start = time.perf_counter()
         timestamps: list[float] = []
         pieces: list[str] = []
         output: str | None = None
-        timestamps_synthesized = False
+        e2e_only = False
 
         # Only treat missing/incompatible stream API as fallback triggers — not
         # RuntimeError/OOM/etc., which must reach the outer GenerationError path.
@@ -90,35 +90,40 @@ class MlxLmEngine(Engine):
                     max_tokens=params.max_tokens,
                     sampler=sampler,
                 )
-                # No per-token stream — synthesize uniform timestamps from e2e only.
-                e2e = time.perf_counter() - start
-                n_tok = max(1, len(self._tokenizer.encode(output)))
-                timestamps = [e2e * (i + 1) / n_tok for i in range(n_tok)]
-                timestamps_synthesized = True
+                e2e_only = True
+                timestamps = []
         except Exception as e:
             raise GenerationError(str(e)) from e
 
-        if not timestamps:
-            timestamps = [time.perf_counter() - start]
-            timestamps_synthesized = True
-
-        total_tokens = len(timestamps)
-        e2e_ms = timestamps[-1] * 1000.0
-        # Measured TTFT only when stream path produced real per-token times.
-        ttft_ms = None if timestamps_synthesized else timestamps[0] * 1000.0
+        text = output if isinstance(output, str) else str(output)
+        e2e_s = time.perf_counter() - start
+        if e2e_only or not timestamps:
+            # Non-stream (or empty stream): do not invent per-token times.
+            total_tokens = max(1, len(self._tokenizer.encode(text))) if text else 0
+            return GenerationResult(
+                status=GenerationStatus.SUCCESS,
+                output_text=text,
+                token_timestamps=[],
+                ttft_ms=None,
+                total_tokens=total_tokens,
+                memory_peak_bytes=self.get_memory_usage_bytes(),
+                thermal_state=ThermalReading(
+                    method="none", thermal_pressure=None, notes="filled_by_orchestrator"
+                ),
+                e2e_ms=e2e_s * 1000.0,
+            )
 
         return GenerationResult(
             status=GenerationStatus.SUCCESS,
-            output_text=output if isinstance(output, str) else str(output),
+            output_text=text,
             token_timestamps=timestamps,
-            ttft_ms=ttft_ms,
-            total_tokens=total_tokens,
+            ttft_ms=timestamps[0] * 1000.0,
+            total_tokens=len(timestamps),
             memory_peak_bytes=self.get_memory_usage_bytes(),
             thermal_state=ThermalReading(
                 method="none", thermal_pressure=None, notes="filled_by_orchestrator"
             ),
-            e2e_ms=e2e_ms,
-            timestamps_synthesized=timestamps_synthesized,
+            e2e_ms=timestamps[-1] * 1000.0,
         )
 
     def get_memory_usage_bytes(self) -> int:
