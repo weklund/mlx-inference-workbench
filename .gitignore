@@ -82,3 +82,7 @@ coverage.xml
 # Metal compiled shaders (rebuild from source)
 *.metallib
 *.air
+
+# Rust
+/target/
+**/target/

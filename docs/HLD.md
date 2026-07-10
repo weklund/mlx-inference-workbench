@@ -598,22 +598,30 @@ Smallest shippable slice: `bench run` with mlx-lm on one prompt dataset, produci
 - **Coefficient of variation (CoV):** std dev / mean. Threshold of 5% for "stable" results based on internal Amazon benchmarking best practices (DemerzelBench).
 - **Trimmed mean (tm99):** Mean after dropping top 1% of values. Reduces impact of occasional thermal spikes or GC pauses.
 
-### B. M5 Max Hardware Profile (VERIFICATION REQUIRED — Phase 1 hard gate)
+### B. M5 Max Hardware Profile (issue #8)
 
-| Spec | Expected Value | Verification Method | Status |
-|------|---------------|---------------------|--------|
-| Unified memory | 128 GB | `sysctl hw.memsize` | Configured — verified |
-| Memory bandwidth | ~600 GB/s (est.) | (1) Apple published specs, (2) STREAM benchmark empirical measurement | **UNVERIFIED — blocks roofline** |
-| GPU cores | 40 (est.) | (1) Apple published specs, (2) `system_profiler SPDisplaysDataType` | **UNVERIFIED** |
-| GPU FP32 | ~60 TFLOPS (est.) | (1) Apple published specs, (2) Peak-perf micro-kernel (simple FMA loop saturating all cores) | **UNVERIFIED — blocks roofline** |
-| Neural Engine | ~38 TOPS | Not directly programmable — informational only | N/A |
-| Chip | M5 Max | `sysctl hw.optional` | Verified at runtime by Hardware Probe |
+Profile file: `configs/hardware/m5_max_128gb.yaml` (versioned; re-verify with `make hardware-ceilings-write`).
 
-**Verification strategy (both required):**
-1. **Published specs:** Find Apple's official M5 Max specifications page or WWDC materials for memory bandwidth and GPU TFLOPS. Record source URL.
-2. **Empirical measurement:** Run STREAM benchmark (or equivalent memory bandwidth test) and a peak-FLOPS micro-kernel on the actual M5 Max hardware. Compare empirical numbers against published specs. Use the lower of the two as the roofline ceiling (conservative — realistic sustained bandwidth is always below theoretical peak).
+| Spec | Published | Empirical method | Conservative ceiling | Status |
+|------|-----------|------------------|----------------------|--------|
+| Unified memory | 128 GB | `sysctl hw.memsize` | 128 GB | Verified on workbench host |
+| Memory bandwidth | **460 GB/s** (32-core GPU SKU) or **614 GB/s** (40-core GPU SKU) — [Apple MacBook Pro tech specs](https://support.apple.com/en-us/126319) | **L1 (kernel):** Rust + MSL STREAM (`crates/metal_stream`, copy/scale/add/triad). **L2 (proxy):** MLX compiled triad. | **min(published, empirical)** with `empirical` preferring Metal STREAM | Verified; YAML `empirical_metal_stream` is kernel denominator |
+| GPU cores | 32 or 40 | `system_profiler SPDisplaysDataType` | Match detected cores | Verified procedure |
+| GPU FP32 | **Not published by Apple** (as of 2026-07) | Peak MLX FP32 matmul TFLOPS (`measure_matmul_tflops`) | Empirical only | Empirical ceiling only — do not invent vendor TFLOPS |
+| Neural Engine | Informational | Not directly programmable | N/A | Out of harness scope |
+| Chip | M5 Max | `sysctl` / Hardware Probe fingerprint | — | Runtime |
 
-**Hard gate:** Roofline analysis (Phase 3) is blocked until both verification methods produce consistent numbers. If Apple doesn't publish FP32 TFLOPS, use empirical peak-FLOPS only and document the methodology. Bandwidth utilization % (FR2) requires verified bandwidth — report raw GB/s without a percentage until then.
+**Verification strategy (both required for bandwidth):**
+1. **Published specs:** Apple support / product tech specs URL above. Map GPU core count → 460 vs 614 GB/s.
+2. **Empirical measurement:**
+   - **Kernel-grade (L1):** `make metal-stream` or `cargo run -p metal_stream --release` — MSL STREAM via Rust host (same stack as Phase 3 custom kernels).
+   - **Proxy (L2):** MLX compiled triad via `workbench.ceilings`.
+   - Full write: `make hardware-ceilings-write` runs both and updates YAML.
+   - Use **min(published, empirical)**; `empirical` prefers `empirical_metal_stream`.
+
+**Hard gate (Phase 3 roofline):** Custom kernel “% of peak bandwidth” uses the **Metal STREAM conservative ceiling**, not brochure peak alone and not MLX-only. If measured ≫ published, treat as measurement artifact / wrong SKU. FLOPS roofline uses empirical matmul TFLOPS until Apple publishes a figure.
+
+**API:** `workbench.hardware_profile.bandwidth_utilization_pct(achieved_gbs, ceiling_gbs)` and `HardwareProfile.bandwidth_ceiling_gbs()`. Rust: `metal_stream::run_stream`.
 
 ### C. Prompt Dataset Schema
 
