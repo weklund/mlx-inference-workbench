@@ -126,6 +126,12 @@ enable_mlflow: "false"
 benchmark:
   monitor_thermal: "false"
   abort_if_throttling: "false"
+metrics:
+  report_trimmed_mean: "false"
+  report_std: "false"
+reproducibility:
+  record_git_commit: "false"
+  record_env_versions: "false"
 """,
         encoding="utf-8",
     )
@@ -133,6 +139,31 @@ benchmark:
     assert cfg.enable_mlflow is False
     assert cfg.benchmark.monitor_thermal is False
     assert cfg.benchmark.abort_if_throttling is False
+    assert cfg.metrics.report_trimmed_mean is False
+    assert cfg.metrics.report_std is False
+    assert cfg.reproducibility.record_git_commit is False
+    assert cfg.reproducibility.record_env_versions is False
+
+
+def test_yaml_boolean_false_disables_metrics_and_repro_flags(tmp_path: Path):
+    path = _write_yaml(
+        tmp_path / "metrics_repro.yaml",
+        _minimal_config(
+            metrics={
+                "report_trimmed_mean": False,
+                "report_std": False,
+            },
+            reproducibility={
+                "record_git_commit": False,
+                "record_env_versions": False,
+            },
+        ),
+    )
+    cfg = load_config(path)
+    assert cfg.metrics.report_trimmed_mean is False
+    assert cfg.metrics.report_std is False
+    assert cfg.reproducibility.record_git_commit is False
+    assert cfg.reproducibility.record_env_versions is False
 
 
 def test_programmatic_non_boolean_rejected():
@@ -150,3 +181,33 @@ def test_programmatic_non_boolean_rejected():
         ExperimentConfig.from_dict(
             _minimal_config(benchmark={"abort_if_throttling": None}),
         )
+    with pytest.raises(ValueError, match="report_trimmed_mean"):
+        ExperimentConfig.from_dict(
+            _minimal_config(metrics={"report_trimmed_mean": "maybe"}),
+        )
+    with pytest.raises(ValueError, match="report_std"):
+        ExperimentConfig.from_dict(
+            _minimal_config(metrics={"report_std": 2}),
+        )
+    with pytest.raises(ValueError, match="record_git_commit"):
+        ExperimentConfig.from_dict(
+            _minimal_config(reproducibility={"record_git_commit": None}),
+        )
+    with pytest.raises(ValueError, match="record_env_versions"):
+        ExperimentConfig.from_dict(
+            _minimal_config(reproducibility={"record_env_versions": "yesplease"}),
+        )
+
+
+def test_config_source_has_no_raw_bool_for_yaml_flags():
+    """Regression: YAML-sourced flags must go through _parse_bool, not bool(...)."""
+    import inspect
+
+    from workbench import config
+
+    source = inspect.getsource(config.ExperimentConfig.from_dict)
+    # Allow bool only if someone reintroduces a non-flag cast; flag paths must use _parse_bool.
+    assert "bool(metrics_raw.get" not in source
+    assert "bool(repro_raw.get" not in source
+    assert "bool(bench_raw.get" not in source
+    assert "_parse_bool" in source
