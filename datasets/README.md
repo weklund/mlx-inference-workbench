@@ -13,6 +13,7 @@ One JSON object per line:
 | `prompt` | yes | User-facing prompt text (single-request) |
 | `expected_tokens_approx` | no | Soft size hint for planning |
 | `reference` | no | Gold output for `require_correctness` (temp=0 / fixed seed) |
+| `system_prompt` | no | Optional system/developer preamble; retained and prepended for generation (`system` accepted as alias) |
 
 Encoding: UTF-8. The harness verifies integrity with a **SHA-256** sidecar in `sha256sum` form:
 
