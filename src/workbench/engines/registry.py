@@ -7,6 +7,8 @@ from collections.abc import Callable
 from workbench.engines.base import Engine
 
 _REGISTRY: dict[str, Callable[[], Engine]] = {}
+# Mutable flag container avoids module-level ``global`` (Ruff PLW0603).
+_STATE: dict[str, bool] = {"builtins_loaded": False}
 
 
 def register_engine(name: str, factory: Callable[[], Engine]) -> None:
@@ -15,7 +17,11 @@ def register_engine(name: str, factory: Callable[[], Engine]) -> None:
 
 
 def create_engine(name: str) -> Engine:
-    """Instantiate a registered engine; loads built-ins on first miss.
+    """Instantiate a registered engine; loads built-ins lazily once.
+
+    Custom engines may be registered before any create_engine call without
+    blocking built-in discovery. Custom factories already present under a
+    built-in name are preserved (not overwritten by lazy load).
 
     Args:
         name: Backend key from experiment config (e.g. ``mlx-lm``).
@@ -26,26 +32,33 @@ def create_engine(name: str) -> Engine:
     Raises:
         KeyError: Unknown backend name.
     """
-    if name not in _REGISTRY:
-        # lazy import built-ins
-        _ensure_builtins()
+    _ensure_builtins()
     if name not in _REGISTRY:
         known = ", ".join(sorted(_REGISTRY)) or "(none)"
         raise KeyError(f"Unknown engine {name!r}. Known: {known}")
     return _REGISTRY[name]()
 
 
+def _register_builtin(name: str, factory: Callable[[], Engine]) -> None:
+    """Register a built-in only if ``name`` is not already taken."""
+    if name not in _REGISTRY:
+        register_engine(name, factory)
+
+
 def _ensure_builtins() -> None:
-    if _REGISTRY:
+    """Import and register built-in backends once (idempotent)."""
+    if _STATE["builtins_loaded"]:
         return
+    _STATE["builtins_loaded"] = True
+
     from workbench.engines.stub import StubEngine
 
-    register_engine("stub", StubEngine)
+    _register_builtin("stub", StubEngine)
 
     try:
         from workbench.engines.mlx_lm_engine import MlxLmEngine
 
-        register_engine("mlx-lm", MlxLmEngine)
-        register_engine("mlx_lm", MlxLmEngine)
+        _register_builtin("mlx-lm", MlxLmEngine)
+        _register_builtin("mlx_lm", MlxLmEngine)
     except ImportError:
         pass
