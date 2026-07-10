@@ -1,0 +1,15 @@
+# Hardware profile skeleton — empirical bandwidth/FLOPS filled by issue #8
+profile: m5_max_128gb
+chip: Apple M5 Max
+unified_memory_gb: 128
+memory_bandwidth_gbs:
+  published: null  # UNVERIFIED
+  empirical: null  # UNVERIFIED
+gpu_cores:
+  published: null
+  empirical: null
+gpu_fp32_tflops:
+  published: null
+  empirical: null
+notes: >
+  Roofline percentages blocked until published + empirical verification (HLD Appendix B / issue #8).
