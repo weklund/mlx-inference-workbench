@@ -55,20 +55,19 @@ def test_stream_runtime_error_does_not_fall_back_to_mlx_generate(monkeypatch):
     assert calls == ["stream"]
 
 
-def test_missing_stream_api_falls_back_to_mlx_generate(monkeypatch):
+def test_missing_stream_api_is_e2e_only_no_fake_timestamps(monkeypatch):
     _install_fake_mlx(monkeypatch, stream_generate=None, generate=lambda *_a, **_k: "fallback-text")
 
     eng = _engine()
     result = eng.generate("hello", GenParams(max_tokens=4, seed=1))
     assert result.output_text == "fallback-text"
-    assert result.total_tokens == 3
-    # Non-stream path must not claim measured TTFT from uniform e2e splits.
-    assert result.timestamps_synthesized is True
+    assert result.total_tokens == 3  # from tokenizer.encode
+    assert result.token_timestamps == []
     assert result.ttft_ms is None
     assert result.e2e_ms is not None and result.e2e_ms > 0
 
 
-def test_type_error_stream_signature_falls_back(monkeypatch):
+def test_type_error_stream_signature_is_e2e_only(monkeypatch):
     def bad_stream(*_a, **_k):
         raise TypeError("unexpected keyword argument 'sampler'")
 
@@ -81,8 +80,9 @@ def test_type_error_stream_signature_falls_back(monkeypatch):
     eng = _engine()
     result = eng.generate("hello", GenParams(max_tokens=4, seed=1))
     assert result.output_text == "compat-fallback"
-    assert result.timestamps_synthesized is True
+    assert result.token_timestamps == []
     assert result.ttft_ms is None
+    assert result.e2e_ms is not None and result.e2e_ms > 0
 
 
 def test_stream_path_reports_measured_ttft(monkeypatch):
@@ -95,6 +95,6 @@ def test_stream_path_reports_measured_ttft(monkeypatch):
     eng = _engine()
     result = eng.generate("hello", GenParams(max_tokens=4, seed=1))
     assert result.output_text == "hello"
-    assert result.timestamps_synthesized is False
     assert result.ttft_ms is not None and result.ttft_ms >= 0
     assert len(result.token_timestamps) == 2
+    assert result.total_tokens == 2

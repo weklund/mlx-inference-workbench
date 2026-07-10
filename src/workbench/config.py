@@ -60,6 +60,8 @@ class BenchmarkConfig:
     abort_if_throttling: bool = False
     # If set, only first N prompts are used (smoke tests)
     max_prompts: int | None = None
+    # When True, first prompt must supply a non-empty reference (dataset or override).
+    require_correctness: bool = False
 
 
 @dataclass
@@ -128,6 +130,10 @@ class ExperimentConfig:
                 field="benchmark.abort_if_throttling",
             ),
             max_prompts=bench_raw.get("max_prompts"),
+            require_correctness=_parse_bool(
+                bench_raw.get("require_correctness", False),
+                field="benchmark.require_correctness",
+            ),
         )
         metrics = MetricsConfig(
             report_percentiles=list(metrics_raw.get("report_percentiles", [50, 90, 95, 99])),
