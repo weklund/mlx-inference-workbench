@@ -9,6 +9,7 @@ UV ?= uv
 PYTEST_MARK_CI := not gpu and not slow
 COV_JSON := coverage.json
 SMOKE_CONFIG := configs/experiments/smoke_minimal.yaml
+AGENTIC_STUB_CONFIG := configs/experiments/agentic_coding_v1_stub.yaml
 
 # Thermal (override: make thermal-run SESSION=morning DAY=2 RUNS=5)
 SESSION ?=
@@ -16,7 +17,7 @@ DAY ?=
 RUNS ?= 5
 
 .PHONY: help sync sync-update lint fmt test test-unit test-integration \
-	coverage ci smoke bench-list bench-compare bench-report \
+	coverage ci smoke smoke-agentic bench-list bench-compare bench-report \
 	thermal-run thermal-analyze thermal-analyze-protocol clean
 
 help: ## Show available targets
@@ -68,6 +69,9 @@ ci: lint coverage ## Local mirror of required Python CI gates
 
 smoke: ## Run stub smoke experiment end-to-end
 	$(UV) run bench run $(SMOKE_CONFIG)
+
+smoke-agentic: ## Stub run pinned to agentic_coding_v1 dataset
+	$(UV) run bench run $(AGENTIC_STUB_CONFIG)
 
 bench-list: ## List stored benchmark runs
 	$(UV) run bench list

@@ -1,0 +1,41 @@
+schema_version: "1.0"
+
+experiment:
+  name: "agentic-coding-v1-stub"
+  description: >
+    Harness config pinned to agentic_coding_v1 prompt corpus (stub engine).
+    For real mlx-lm baselines, clone this config and set model.backend/model_id (#7).
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "stub-model"
+  quantization: "n/a"
+  backend: "stub"
+  max_tokens: 64
+
+benchmark:
+  warmup_iterations: 1
+  timed_iterations: 5
+  per_iteration_timeout_sec: 60
+  prompt_dataset: "datasets/agentic_coding_v1.jsonl"
+  prompt_checksum: "datasets/agentic_coding_v1.sha256"
+  cooldown_between_runs_sec: 0
+  monitor_thermal: false
+  abort_if_throttling: false
+  # Full corpus is 24 prompts; cap for fast local smoke. Remove for full sweeps.
+  max_prompts: 8
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: false
