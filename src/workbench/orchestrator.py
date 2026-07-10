@@ -21,7 +21,7 @@ from workbench.models import (
 from workbench.paths import resolve_path
 from workbench.prompts import load_dataset
 from workbench.storage.run_store import RunStore
-from workbench.thermal import build_thermal_sensor, cooldown
+from workbench.thermal import ThermalSensor, build_thermal_sensor, cooldown
 
 
 class OrchestratorError(Exception):
@@ -48,6 +48,7 @@ def run_experiment(
     *,
     repo_root: Path | None = None,
     engine: Engine | None = None,
+    thermal: ThermalSensor | None = None,
     correctness_reference: str = "",
 ) -> RunRecord:
     """Run a timed benchmark.
@@ -74,11 +75,13 @@ def run_experiment(
         items = items[: config.benchmark.max_prompts]
     prompts = [i.prompt for i in items]
 
-    # Hardware + thermal
+    # Hardware + thermal (inject for tests; production builds from config)
     fingerprint = capture_fingerprint(config.hardware_profile)
-    thermal = build_thermal_sensor(config.benchmark.monitor_thermal)
-    baseline = thermal.read()
-    if config.benchmark.abort_if_throttling and thermal.is_throttling(baseline):
+    sensor = (
+        thermal if thermal is not None else build_thermal_sensor(config.benchmark.monitor_thermal)
+    )
+    baseline = sensor.read()
+    if config.benchmark.abort_if_throttling and sensor.is_throttling(baseline):
         raise OrchestratorError(f"Aborting: system already throttling ({baseline})")
 
     # Engine
@@ -103,15 +106,15 @@ def run_experiment(
     consecutive_failures = 0
     for i in range(config.benchmark.timed_iterations):
         prompt = prompts[i % len(prompts)]
-        pre = thermal.read()
+        pre = sensor.read()
         try:
             result = timed_generate(eng, prompt, params)
             if result.status == GenerationStatus.SUCCESS:
                 result.thermal_state = pre
-            if result.status == GenerationStatus.SUCCESS and thermal.is_throttling(pre):
+            if result.status == GenerationStatus.SUCCESS and sensor.is_throttling(pre):
                 result.status = GenerationStatus.THERMAL_TAINTED
-            if hasattr(thermal, "note_duration") and result.e2e_ms is not None:
-                thermal.note_duration(result.e2e_ms / 1000.0)
+            if result.e2e_ms is not None:
+                sensor.note_duration(result.e2e_ms / 1000.0)
             consecutive_failures = (
                 0 if result.status == GenerationStatus.SUCCESS else consecutive_failures + 1
             )
@@ -154,7 +157,7 @@ def run_experiment(
         schema_version=config.schema_version,
         metrics_schema_version=METRICS_SCHEMA_VERSION,
         engine_interface_version=ENGINE_INTERFACE_VERSION,
-        thermal_monitoring=thermal.mode(),
+        thermal_monitoring=sensor.mode(),
         config_path=str(config.source_path) if config.source_path else None,
     )
 

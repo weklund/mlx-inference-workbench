@@ -18,6 +18,10 @@ class ThermalSensor(Protocol):
 
     def is_throttling(self, reading: ThermalReading) -> bool: ...
 
+    def note_duration(self, seconds: float) -> None:
+        """Record iteration wall time for anomaly heuristics. Default: no-op."""
+        ...
+
 
 class OffThermalSensor:
     def mode(self) -> str:
@@ -29,9 +33,12 @@ class OffThermalSensor:
     def is_throttling(self, reading: ThermalReading) -> bool:
         return False
 
+    def note_duration(self, seconds: float) -> None:
+        return None
+
 
 class DegradedThermalSensor:
-    """Timing-anomaly based; orchestrator can call note_duration after each iter."""
+    """Timing-anomaly based; orchestrator calls note_duration after each iter."""
 
     def __init__(self) -> None:
         self._durations: list[float] = []
@@ -108,6 +115,9 @@ class PowermetricsThermalSensor:
         if not reading.thermal_pressure:
             return False
         return reading.thermal_pressure.lower() not in {"nominal", "normal", "0"}
+
+    def note_duration(self, seconds: float) -> None:
+        return None
 
 
 def _parse_power_mw(text: str, label: str) -> float | None:
