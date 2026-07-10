@@ -62,3 +62,13 @@ def _ensure_builtins() -> None:
         _register_builtin("mlx_lm", MlxLmEngine)
     except ImportError:
         pass
+
+    # Register even when the optional ``mtplx`` package is missing so
+    # create_engine("mtplx") returns a plugin that fails at load_model with
+    # a clear EngineLoadError (mirrors optional-dep UX for local smoke).
+    try:
+        from workbench.engines.mtplx_engine import MtplxEngine
+
+        _register_builtin("mtplx", MtplxEngine)
+    except ImportError:
+        pass
