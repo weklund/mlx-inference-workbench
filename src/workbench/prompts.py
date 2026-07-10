@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import hashlib
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class PromptItem:
+    """One dataset row: user prompt plus optional system/reference."""
+
     id: str
     category: str
     prompt: str
@@ -29,6 +31,8 @@ class PromptItem:
 
 @dataclass(frozen=True)
 class PromptDataset:
+    """Loaded prompt file with integrity hash."""
+
     path: Path
     items: tuple[PromptItem, ...]
     sha256: str
@@ -39,6 +43,7 @@ class PromptDataset:
 
 
 def sha256_file(path: Path) -> str:
+    """Return lowercase hex SHA-256 of file contents."""
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -50,8 +55,8 @@ def load_checksum_file(checksum_path: Path) -> dict[str, str]:
     """Parse `hash  filename` or `hash *filename` lines (sha256sum style)."""
     mapping: dict[str, str] = {}
     text = checksum_path.read_text(encoding="utf-8")
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         parts = line.split()
@@ -93,8 +98,8 @@ def load_dataset(
 
     items: list[PromptItem] = []
     with path.open(encoding="utf-8") as f:
-        for i, line in enumerate(f, start=1):
-            line = line.strip()
+        for i, raw_line in enumerate(f, start=1):
+            line = raw_line.strip()
             if not line:
                 continue
             try:

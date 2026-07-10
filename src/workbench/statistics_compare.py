@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import math
 from typing import Any
 
 import numpy as np
@@ -16,6 +17,8 @@ from workbench.models import DISTRIBUTION_METRIC_NAMES, DistributionStats, RunRe
 
 @dataclass(frozen=True)
 class ComparisonResult:
+    """Statistical comparison of one metric between two runs."""
+
     metric_name: str
     comparable: bool
     violations: tuple[str, ...]
@@ -35,6 +38,7 @@ class ComparisonResult:
     verdict: str
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize for CLI / JSON reports."""
         return asdict(self)
 
 
@@ -65,6 +69,21 @@ def compare_distributions(
     gate: GateResult,
     alpha: float = 0.05,
 ) -> ComparisonResult:
+    """Compare two distributions after the comparability gate.
+
+    Uses Welch t-test when both sides look normal; otherwise Mann-Whitney U
+    with bootstrap CI on the mean difference.
+
+    Args:
+        a: Distribution from run A (or None).
+        b: Distribution from run B (or None).
+        metric_name: Metric id for reporting.
+        gate: Prior comparability result (must pass for a real test).
+        alpha: Significance level (default 0.05).
+
+    Returns:
+        ComparisonResult with verdict and optional effect size.
+    """
     if not gate.comparable:
         return ComparisonResult(
             metric_name=metric_name,
@@ -164,7 +183,7 @@ def compare_distributions(
         mean_diff=mean_diff,
         p_value=p_value,
         test_name=test_name,
-        cohens_d=d if d == d else None,  # NaN check
+        cohens_d=None if math.isnan(d) else d,
         ci95_low=float(ci_low),
         ci95_high=float(ci_high),
         significant_at_0_05=significant,
@@ -178,6 +197,16 @@ def compare_runs(
     *,
     metric_name: str = "decode_tok_s",
 ) -> ComparisonResult:
+    """Compare two completed runs on one distribution metric.
+
+    Args:
+        run_a: Baseline run.
+        run_b: Candidate run.
+        metric_name: One of DISTRIBUTION_METRIC_NAMES (default decode_tok_s).
+
+    Returns:
+        ComparisonResult (may be blocked by comparability gate).
+    """
     if metric_name not in DISTRIBUTION_METRIC_NAMES:
         raise ValueError(
             f"Unsupported metric_name {metric_name!r}; "

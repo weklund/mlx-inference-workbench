@@ -8,24 +8,39 @@
 
 use serde::Serialize;
 
+/// One STREAM kernel's measured bandwidth.
 #[derive(Debug, Clone, Serialize)]
 pub struct StreamKernelResult {
+    /// Kernel name: `copy`, `scale`, `add`, or `triad`.
     pub name: String,
+    /// Peak observed bandwidth in GB/s (wall-clock after warmup).
     pub gbs: f64,
+    /// Number of buffer streams touched (2 for copy/scale, 3 for add/triad).
     pub streams: f64,
 }
 
+/// Full STREAM probe report (JSON-serializable for hardware YAML tooling).
 #[derive(Debug, Clone, Serialize)]
 pub struct StreamReport {
+    /// Measurement method tag, e.g. `rust_metal_stream_float4`.
     pub method: String,
+    /// Metal device name.
     pub device: String,
+    /// Bytes per buffer.
     pub buffer_bytes: usize,
+    /// Elements per buffer as `float4` count (16 bytes each).
     pub n_float4: u64,
+    /// Warmup dispatches discarded before timing.
     pub warmup: u32,
+    /// Timed iterations per kernel (peak retained).
     pub iterations: u32,
+    /// Per-kernel results.
     pub kernels: Vec<StreamKernelResult>,
+    /// Maximum `gbs` across kernels.
     pub best_gbs: f64,
+    /// Name of the kernel that achieved [`Self::best_gbs`].
     pub best_kernel: String,
+    /// Human-readable methodology notes (not machine-parsed).
     pub notes: String,
 }
 
@@ -37,11 +52,13 @@ pub const STREAM_SCALAR: f32 = 1.0001;
 pub mod oracle {
     use super::STREAM_SCALAR;
 
+    /// `c[i] = a[i]` (STREAM Copy).
     pub fn copy(a: &[f32], c: &mut [f32]) {
         assert_eq!(a.len(), c.len());
         c.copy_from_slice(a);
     }
 
+    /// `b[i] = s * c[i]` (STREAM Scale).
     pub fn scale(c: &[f32], b: &mut [f32], s: f32) {
         assert_eq!(c.len(), b.len());
         for i in 0..c.len() {
@@ -49,6 +66,7 @@ pub mod oracle {
         }
     }
 
+    /// `c[i] = a[i] + b[i]` (STREAM Add).
     pub fn add(a: &[f32], b: &[f32], c: &mut [f32]) {
         assert_eq!(a.len(), b.len());
         assert_eq!(a.len(), c.len());
@@ -57,6 +75,7 @@ pub mod oracle {
         }
     }
 
+    /// `a[i] = b[i] + s * c[i]` (STREAM Triad).
     pub fn triad(b: &[f32], c: &[f32], a: &mut [f32], s: f32) {
         assert_eq!(a.len(), b.len());
         assert_eq!(a.len(), c.len());
@@ -79,6 +98,7 @@ pub mod oracle {
         (a, b, c)
     }
 
+    /// Element-wise maximum absolute difference (for host-oracle checks).
     pub fn max_abs_diff(x: &[f32], y: &[f32]) -> f32 {
         assert_eq!(x.len(), y.len());
         let mut m = 0.0f32;
@@ -96,11 +116,18 @@ pub mod oracle {
 ///
 /// Does **not** assert absolute GB/s — machine-dependent. Use
 /// [`verify_stream_kernels`] for correctness.
+///
+/// # Errors
+/// Returns an error if Metal is unavailable (including all non-macOS hosts).
 #[cfg(target_os = "macos")]
 pub fn run_stream(n_float4: u64, warmup: u32, iterations: u32) -> Result<StreamReport, String> {
     macos::run_stream_impl(n_float4, warmup, iterations)
 }
 
+/// Run STREAM Copy / Scale / Add / Triad on the default Metal device (performance).
+///
+/// # Errors
+/// Always returns an error on non-macOS hosts (Metal unavailable).
 #[cfg(not(target_os = "macos"))]
 pub fn run_stream(_n_float4: u64, _warmup: u32, _iterations: u32) -> Result<StreamReport, String> {
     Err("metal_stream requires macOS + Metal".into())
@@ -109,11 +136,19 @@ pub fn run_stream(_n_float4: u64, _warmup: u32, _iterations: u32) -> Result<Stre
 /// Host-oracle correctness for all four MSL STREAM kernels (small buffers).
 ///
 /// Returns `Ok(())` when GPU outputs match CPU reference within `atol`.
+///
+/// # Errors
+/// Returns an error if Metal is unavailable (including all non-macOS hosts),
+/// or if GPU outputs diverge from the host oracle beyond `atol`.
 #[cfg(target_os = "macos")]
 pub fn verify_stream_kernels(n_float4: u64, atol: f32) -> Result<(), String> {
     macos::verify_stream_kernels_impl(n_float4, atol)
 }
 
+/// Host-oracle correctness for all four MSL STREAM kernels (small buffers).
+///
+/// # Errors
+/// Always returns an error on non-macOS hosts (Metal unavailable).
 #[cfg(not(target_os = "macos"))]
 pub fn verify_stream_kernels(_n_float4: u64, _atol: f32) -> Result<(), String> {
     Err("metal_stream requires macOS + Metal".into())

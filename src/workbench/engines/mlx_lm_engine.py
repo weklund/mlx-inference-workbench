@@ -11,15 +11,19 @@ from workbench.models import GenerationResult, GenerationStatus, ThermalReading
 
 
 class MlxLmEngine(Engine):
+    """Apple MLX language-model backend via the ``mlx-lm`` package."""
+
     def __init__(self) -> None:
         self._model: Any = None
         self._tokenizer: Any = None
         self._config: ModelConfig | None = None
 
     def name(self) -> str:
+        """Return the stable backend id ``mlx-lm``."""
         return "mlx-lm"
 
     def load_model(self, config: ModelConfig) -> None:
+        """Load model and tokenizer from ``config.model_id`` or ``config.name``."""
         try:
             from mlx_lm import load
         except ImportError as e:
@@ -35,6 +39,11 @@ class MlxLmEngine(Engine):
         self._config = config
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
+        """Generate with stream timestamps when available; else e2e-only.
+
+        Stream path fills ``token_timestamps`` and ``ttft_ms``. Non-stream
+        leaves timestamps empty and ``ttft_ms=None`` (honest e2e only).
+        """
         self._ensure()
         try:
             from mlx_lm import generate as mlx_generate
@@ -67,23 +76,27 @@ class MlxLmEngine(Engine):
             _stream_generate = None
 
         try:
+            stream_iter = None
             if _stream_generate is not None:
+                # TypeError fallback covers call-time API mismatch only
+                # (wrong kwargs / signature). Errors while iterating or
+                # reading chunks must not discard partial output via e2e retry.
                 try:
-                    for response in _stream_generate(
+                    stream_iter = _stream_generate(
                         self._model,
                         self._tokenizer,
                         prompt=prompt,
                         max_tokens=params.max_tokens,
                         sampler=sampler,
-                    ):
-                        pieces.append(response.text)
-                        timestamps.append(time.perf_counter() - start)
-                    output = "".join(pieces)
+                    )
                 except TypeError:
-                    # Signature / return-shape mismatch with this mlx-lm version.
-                    pieces.clear()
-                    timestamps.clear()
-                    output = None
+                    stream_iter = None
+
+            if stream_iter is not None:
+                for response in stream_iter:
+                    pieces.append(response.text)
+                    timestamps.append(time.perf_counter() - start)
+                output = "".join(pieces)
 
             if output is None:
                 output = mlx_generate(

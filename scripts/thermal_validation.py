@@ -13,11 +13,11 @@ Usage:
 Results append to: docs/spikes/005_thermal_data.jsonl
 """
 
+from datetime import UTC, datetime
 import json
+from pathlib import Path
 import subprocess
 import time
-from datetime import datetime, timezone
-from pathlib import Path
 
 import click
 import mlx.core as mx
@@ -68,7 +68,7 @@ def get_power_source() -> str:
         output = result.stdout.lower()
         if "ac power" in output:
             return "ac"
-        elif "battery power" in output:
+        if "battery power" in output:
             return "battery"
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
@@ -246,7 +246,7 @@ def main(runs: int, session: str, day: int, cooldown: int, model_id: str, power_
         thermal_after = get_thermal_state()
 
         record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "day": day,
             "session": session,
             "run_index": i,

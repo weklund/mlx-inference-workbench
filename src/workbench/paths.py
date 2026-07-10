@@ -16,8 +16,7 @@ def resolve_project_root(
     explicit: Path | str | None = None,
     start: Path | None = None,
 ) -> Path:
-    """
-    Resolve the workbench project / data root.
+    """Resolve the workbench project / data root.
 
     Priority:
       1. explicit path (CLI --project-root)
@@ -57,9 +56,7 @@ def _is_project_root(directory: Path) -> bool:
         if any(marker in text for marker in _PROJECT_NAME_MARKERS):
             return True
     # Workspace layout without relying on package name alone
-    if (directory / "configs").is_dir() and (directory / "datasets").is_dir():
-        return True
-    return False
+    return (directory / "configs").is_dir() and (directory / "datasets").is_dir()
 
 
 def resolve_path(path: Path | str, *, root: Path) -> Path:

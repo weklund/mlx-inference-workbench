@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import threading
 from queue import Empty, Queue
+import threading
 
 from workbench.engines.base import Engine, GenParams
 from workbench.models import GenerationResult, GenerationStatus, ThermalReading

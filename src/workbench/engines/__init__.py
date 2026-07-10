@@ -1,3 +1,5 @@
+"""Engine plugins — backends implement Engine; registry creates instances."""
+
 from workbench.engines.base import Engine, EngineLoadError, GenerationError
 from workbench.engines.registry import create_engine, register_engine
 

@@ -1,7 +1,7 @@
 """Git SHA capture must use the target repo root, not process cwd."""
 
-import subprocess
 from pathlib import Path
+import subprocess
 
 from workbench.hardware import capture_git_sha, library_versions
 

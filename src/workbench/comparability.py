@@ -31,20 +31,32 @@ MIN_VALID_ITERATIONS_FOR_COMPARE = 2
 
 @dataclass(frozen=True)
 class GateResult:
+    """Outcome of the comparability checklist."""
+
     comparable: bool
     violations: tuple[str, ...]
 
     def raise_if_blocked(self) -> None:
+        """Raise ComparabilityError when not comparable."""
         if not self.comparable:
             joined = "; ".join(self.violations)
             raise ComparabilityError(f"Comparability gate blocked: {joined}")
 
 
 class ComparabilityError(Exception):
-    pass
+    """Raised when two runs fail the comparability gate."""
 
 
 def check_comparable(a: RunMetadata, b: RunMetadata) -> GateResult:
+    """Check metadata fields that must match for a fair comparison.
+
+    Args:
+        a: First run metadata.
+        b: Second run metadata.
+
+    Returns:
+        GateResult with violations listed when not comparable.
+    """
     violations: list[str] = []
 
     for field_name in REQUIRED_EQUAL_FIELDS:
