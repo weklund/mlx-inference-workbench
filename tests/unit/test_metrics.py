@@ -1,7 +1,15 @@
 """Behavioral: metric summaries express stability and sample quality, not internal formulas."""
 
+from dataclasses import fields
+
 from workbench.metrics import compute_distribution, summarize_iterations
-from workbench.models import GenerationResult, GenerationStatus, ThermalReading
+from workbench.models import (
+    DISTRIBUTION_METRIC_NAMES,
+    GenerationResult,
+    GenerationStatus,
+    MetricSummary,
+    ThermalReading,
+)
 
 
 def _ok(ttft_ms: float, tok_s_timestamps: list[float]) -> GenerationResult:
@@ -102,3 +110,44 @@ def test_e2e_only_results_excluded_from_ttft_and_token_metrics():
     # e2e still aggregates both (wall-clock is real on the non-stream path)
     assert summary.e2e_ms is not None
     assert summary.e2e_ms.n == 2
+
+
+def test_distribution_metric_names_are_metric_summary_fields():
+    """Canonical allowlist must name real MetricSummary slots (no typos / drift)."""
+    by_name = {f.name for f in fields(MetricSummary)}
+    assert len(DISTRIBUTION_METRIC_NAMES) == len(set(DISTRIBUTION_METRIC_NAMES))
+    assert DISTRIBUTION_METRIC_NAMES  # non-empty
+    for name in DISTRIBUTION_METRIC_NAMES:
+        assert name in by_name, f"{name} missing on MetricSummary"
+    # Scalars / tags must never be treated as comparable distributions
+    for scalar in ("valid_iterations", "unstable", "quality_tag", "metrics_schema_version"):
+        assert scalar not in DISTRIBUTION_METRIC_NAMES
+
+
+def test_metric_summary_to_dict_includes_all_distribution_names():
+    summary = summarize_iterations([_ok(5.0, [0.01, 0.02, 0.03])] * 3)
+    payload = summary.to_dict()
+    for name in DISTRIBUTION_METRIC_NAMES:
+        assert name in payload
+        # Values are either None or a distribution dict
+        block = payload[name]
+        assert block is None or isinstance(block, dict)
+    for scalar in ("valid_iterations", "unstable", "quality_tag"):
+        assert scalar in payload
+
+
+def test_distribution_allowlist_is_single_shared_object():
+    """Compare + store must import the models allowlist, not re-list names."""
+    import inspect
+
+    from workbench import statistics_compare
+    from workbench.storage import run_store
+
+    assert statistics_compare.DISTRIBUTION_METRIC_NAMES is DISTRIBUTION_METRIC_NAMES
+
+    store_src = inspect.getsource(run_store._metric_values_payload)
+    rebuild_src = inspect.getsource(run_store._metrics_from_dict)
+    assert "DISTRIBUTION_METRIC_NAMES" in store_src
+    assert "DISTRIBUTION_METRIC_NAMES" in rebuild_src
+    assert "ttft_ms" not in store_src
+    assert "ttft_ms" not in rebuild_src

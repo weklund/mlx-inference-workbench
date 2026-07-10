@@ -9,20 +9,9 @@ import numpy as np
 from scipy import stats
 
 from workbench.comparability import GateResult, check_runs_comparable
-from workbench.models import DistributionStats, RunRecord
+from workbench.models import DISTRIBUTION_METRIC_NAMES, DistributionStats, RunRecord
 
-# MetricSummary fields that hold DistributionStats (comparable sample series).
-# Reject scalars/tags like quality_tag, unstable, valid_iterations.
-DISTRIBUTION_METRIC_NAMES: frozenset[str] = frozenset(
-    {
-        "ttft_ms",
-        "decode_tok_s",
-        "sitl_ms",
-        "e2e_ms",
-        "memory_peak_bytes",
-        "acceptance_rate",
-    }
-)
+# DISTRIBUTION_METRIC_NAMES: re-exported from models (single allowlist for compare/store/CLI).
 
 
 @dataclass(frozen=True)

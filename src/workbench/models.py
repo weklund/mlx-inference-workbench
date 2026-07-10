@@ -10,6 +10,17 @@ from typing import Any
 METRICS_SCHEMA_VERSION = "1.0"
 ENGINE_INTERFACE_VERSION = "1.0"
 
+# MetricSummary fields that hold DistributionStats (compare + store + CLI allowlist).
+# Single source of truth — do not re-list these names elsewhere.
+DISTRIBUTION_METRIC_NAMES: tuple[str, ...] = (
+    "ttft_ms",
+    "decode_tok_s",
+    "sitl_ms",
+    "e2e_ms",
+    "memory_peak_bytes",
+    "acceptance_rate",
+)
+
 
 class GenerationStatus(str, Enum):
     SUCCESS = "success"
@@ -112,20 +123,21 @@ class MetricSummary:
         def maybe(d: DistributionStats | None) -> dict[str, Any] | None:
             return d.to_dict() if d is not None else None
 
-        return {
+        out: dict[str, Any] = {
             "metrics_schema_version": self.metrics_schema_version,
-            "ttft_ms": maybe(self.ttft_ms),
-            "decode_tok_s": maybe(self.decode_tok_s),
-            "sitl_ms": maybe(self.sitl_ms),
-            "e2e_ms": maybe(self.e2e_ms),
-            "memory_peak_bytes": maybe(self.memory_peak_bytes),
-            "acceptance_rate": maybe(self.acceptance_rate),
-            "valid_iterations": self.valid_iterations,
-            "total_iterations": self.total_iterations,
-            "tainted_iterations": self.tainted_iterations,
-            "unstable": self.unstable,
-            "quality_tag": self.quality_tag,
         }
+        for name in DISTRIBUTION_METRIC_NAMES:
+            out[name] = maybe(getattr(self, name))
+        out.update(
+            {
+                "valid_iterations": self.valid_iterations,
+                "total_iterations": self.total_iterations,
+                "tainted_iterations": self.tainted_iterations,
+                "unstable": self.unstable,
+                "quality_tag": self.quality_tag,
+            }
+        )
+        return out
 
 
 @dataclass
