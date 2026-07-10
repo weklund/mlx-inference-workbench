@@ -166,8 +166,9 @@ All metrics reported as distributions: p50, p90, p95, p99, trimmed mean, std dev
 ## Design Documents
 
 - [HLD: Benchmarking Harness](docs/HLD.md) — Full architecture, requirements, and design decisions
-- [Task Breakdown](docs/TASKS.md) — Implementation plan with phases and checkboxes
-- [Milestone: Local inference gaps (HLD-scoped)](https://github.com/weklund/mlx-inference-workbench/milestone/1) — Setup + experiment issues with DoD/smoke tests (epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4))
+- [Task Breakdown](docs/TASKS.md) — Milestones M1–M3 + HLD phase checkboxes
+- [M1: Lab foundation](https://github.com/weklund/mlx-inference-workbench/milestone/1) · [M2: Multi-engine comparison](https://github.com/weklund/mlx-inference-workbench/milestone/2) · [M3: Custom Metal / Rust kernels](https://github.com/weklund/mlx-inference-workbench/milestone/3)
+- Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4) — Program map (HLD in-scope only)
 
 ## Citing
 
