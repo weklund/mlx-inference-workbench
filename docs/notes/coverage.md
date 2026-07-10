@@ -16,21 +16,24 @@ Day-one goal is **measured floors**, not a blunt 90% on the whole repo. Raise ov
 
 ## Local commands
 
-```bash
-# Full unit suite + term report (uses [tool.coverage] fail_under=80)
-uv run pytest tests/unit -m "not gpu and not slow" \
-  --cov=workbench --cov-report=term-missing -q
+Prefer the Makefile so local and CI stay identical:
 
-# Same + JSON for per-module floors (matches CI)
-uv run pytest tests/unit -m "not gpu and not slow" \
-  --cov=workbench \
-  --cov-report=term-missing \
-  --cov-report=json:coverage.json -q
-uv run python scripts/check_core_coverage.py
+```bash
+make sync          # uv sync --frozen --extra dev
+make coverage      # unit + overall gate + core floors  ← merge gate
+make ci            # lint + coverage
+make help          # all targets
 ```
 
-CI runs the second form on every PR as job **`Test + Coverage (Python)`**
-(`.github/workflows/ci.yml`).
+`make coverage` expands to the same pytest-cov + `scripts/check_core_coverage.py` sequence
+that CI runs. Do not invent alternate flag sets in docs or ad-hoc scripts.
+
+CI job **`Test + Coverage (Python)`** is simply:
+
+```yaml
+- run: make sync
+- run: make coverage
+```
 
 ### Merge protection
 
