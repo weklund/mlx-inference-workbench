@@ -116,11 +116,18 @@ pub mod oracle {
 ///
 /// Does **not** assert absolute GB/s — machine-dependent. Use
 /// [`verify_stream_kernels`] for correctness.
+///
+/// # Errors
+/// Returns an error if Metal is unavailable (including all non-macOS hosts).
 #[cfg(target_os = "macos")]
 pub fn run_stream(n_float4: u64, warmup: u32, iterations: u32) -> Result<StreamReport, String> {
     macos::run_stream_impl(n_float4, warmup, iterations)
 }
 
+/// Run STREAM Copy / Scale / Add / Triad on the default Metal device (performance).
+///
+/// # Errors
+/// Always returns an error on non-macOS hosts (Metal unavailable).
 #[cfg(not(target_os = "macos"))]
 pub fn run_stream(_n_float4: u64, _warmup: u32, _iterations: u32) -> Result<StreamReport, String> {
     Err("metal_stream requires macOS + Metal".into())
@@ -129,11 +136,19 @@ pub fn run_stream(_n_float4: u64, _warmup: u32, _iterations: u32) -> Result<Stre
 /// Host-oracle correctness for all four MSL STREAM kernels (small buffers).
 ///
 /// Returns `Ok(())` when GPU outputs match CPU reference within `atol`.
+///
+/// # Errors
+/// Returns an error if Metal is unavailable (including all non-macOS hosts),
+/// or if GPU outputs diverge from the host oracle beyond `atol`.
 #[cfg(target_os = "macos")]
 pub fn verify_stream_kernels(n_float4: u64, atol: f32) -> Result<(), String> {
     macos::verify_stream_kernels_impl(n_float4, atol)
 }
 
+/// Host-oracle correctness for all four MSL STREAM kernels (small buffers).
+///
+/// # Errors
+/// Always returns an error on non-macOS hosts (Metal unavailable).
 #[cfg(not(target_os = "macos"))]
 pub fn verify_stream_kernels(_n_float4: u64, _atol: f32) -> Result<(), String> {
     Err("metal_stream requires macOS + Metal".into())
