@@ -101,6 +101,23 @@ uv sync --extra profiling        # include matplotlib/pandas for analysis
 uv sync --extra mtplx            # include MTPLX
 ```
 
+### Tests & coverage
+
+```bash
+# Unit tests
+uv run pytest tests/unit -q
+
+# Coverage gate on the scientific core (workbench package; overall ≥ 80%)
+uv run pytest tests/unit -m "not gpu and not slow" \
+  --cov=workbench --cov-report=term-missing -q
+# Optional: per-module floors (same as CI)
+uv run pytest tests/unit -m "not gpu and not slow" \
+  --cov=workbench --cov-report=json:coverage.json -q
+uv run python scripts/check_core_coverage.py
+```
+
+Scripts, spikes, and CLI pretty-print are **not** in the hard gate. Details: [`docs/notes/coverage.md`](docs/notes/coverage.md).
+
 ### 2. Running Benchmarks
 
 ```bash
