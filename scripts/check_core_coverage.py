@@ -6,9 +6,9 @@ Reads coverage.json from pytest-cov. Floors are intentionally below the overall
 block the harness while contracts stabilize. Raise floors toward 90% over time.
 
 Usage:
-    uv run pytest tests/unit -m "not gpu and not slow" \\
-      --cov=workbench --cov-report=json:coverage.json -q
-    uv run python scripts/check_core_coverage.py
+    make coverage
+    # or, after producing coverage.json:
+    uv run python scripts/check_core_coverage.py [coverage.json]
 """
 
 from __future__ import annotations

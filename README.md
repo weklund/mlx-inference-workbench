@@ -96,24 +96,21 @@ mlx-inference-workbench/
 ### 1. Environment Setup
 
 ```bash
-uv sync                          # install base dependencies
-uv sync --extra profiling        # include matplotlib/pandas for analysis
-uv sync --extra mtplx            # include MTPLX
+make sync                        # frozen lock + dev extras (same as CI)
+# or: uv sync --extra profiling / --extra mtplx for optional stacks
+make help                        # list all developer/CI targets
 ```
 
 ### Tests & coverage
 
-```bash
-# Unit tests
-uv run pytest tests/unit -q
+CI and local use the **same Makefile recipes** (do not re-copy long pytest lines):
 
-# Coverage gate on the scientific core (workbench package; overall ≥ 80%)
-uv run pytest tests/unit -m "not gpu and not slow" \
-  --cov=workbench --cov-report=term-missing -q
-# Optional: per-module floors (same as CI)
-uv run pytest tests/unit -m "not gpu and not slow" \
-  --cov=workbench --cov-report=json:coverage.json -q
-uv run python scripts/check_core_coverage.py
+```bash
+make lint          # ruff check + format --check
+make test          # fast unit suite
+make coverage      # unit + ≥80% workbench cov + core module floors (merge gate)
+make ci            # lint + coverage (local mirror of required Python checks)
+make smoke         # stub harness end-to-end
 ```
 
 Scripts, spikes, and CLI pretty-print are **not** in the hard gate. Details: [`docs/notes/coverage.md`](docs/notes/coverage.md).
@@ -122,10 +119,10 @@ Scripts, spikes, and CLI pretty-print are **not** in the hard gate. Details: [`d
 
 ```bash
 # From a checkout (project root is discovered via pyproject.toml / configs+datasets)
-uv run bench run configs/experiments/smoke_minimal.yaml
-uv run bench list
-uv run bench compare <run_a> <run_b>
-uv run bench report <run_id>
+make smoke
+make bench-list
+make bench-compare A=<run_a> B=<run_b>
+make bench-report RUN=<run_id>
 
 # Outside a checkout, or when installed: set an explicit data root
 export MLX_WORKBENCH_ROOT=/path/to/workbench-data   # contains configs/, datasets/, …
