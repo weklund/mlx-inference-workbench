@@ -36,7 +36,20 @@ def iter_warmup_prompts(prompts: list[str], n: int) -> Iterator[str]:
 
 
 class Engine(ABC):
-    """Backend plugin. Generation only — wall-clock timeout is orchestrator policy."""
+    """Backend plugin. Generation only — wall-clock timeout is orchestrator policy.
+
+    **GenerationResult contract (SUCCESS):**
+
+    Prefer the **stream path**: one entry in ``token_timestamps`` per output
+    token (seconds from start) so ``len(token_timestamps) == total_tokens``,
+    with ``ttft_ms`` set from the first mark.
+
+    If streaming is unavailable, use **e2e-only**:
+    ``token_timestamps=[]``, ``ttft_ms=None``, wall-clock ``e2e_ms``, and
+    ``total_tokens`` from tokenizer/count. Do **not** invent placeholder
+    timestamps. Empty timestamps are valid and do not need to match
+    ``total_tokens``; metrics will omit decode/SITL/TTFT for those iters.
+    """
 
     ENGINE_INTERFACE_VERSION = ENGINE_INTERFACE_VERSION
 
@@ -50,7 +63,10 @@ class Engine(ABC):
 
     @abstractmethod
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
-        """Run one generation; never enforce wall-clock timeout here."""
+        """Run one generation; never enforce wall-clock timeout here.
+
+        See class docstring for stream vs e2e-only ``GenerationResult`` rules.
+        """
 
     def supports_speculative(self) -> bool:
         """Whether this backend can report speculative acceptance metrics."""

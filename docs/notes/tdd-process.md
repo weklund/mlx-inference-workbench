@@ -76,7 +76,7 @@ If you cannot write the assertion without inventing the API, design the **public
 | `valid_iterations == 0` / `unstable is True` | Exact error text, call-count of private helpers |
 | Comparability gate blocks different prompt hashes | Asserting field list order inside gate implementation |
 | Round-trip store preserves values needed for compare | Asserting JSON key order or file layout trivia |
-| Engine returns `len(timestamps) == total_tokens` | Asserting sleep duration or internal sampler choice |
+| Stream SUCCESS: `len(timestamps) == total_tokens`; e2e-only: empty timestamps + `ttft_ms is None` | Asserting sleep duration or internal sampler choice |
 
 **Smell:** if a harmless refactor (rename private helper, change timeout mechanism, reword exception message) breaks the test, the test was coupled to implementation.
 
@@ -109,7 +109,8 @@ Before adding features, lock the spike with tests **that would have been red fir
 
 - [ ] `create_engine("stub")` returns engine named `stub`
 - [ ] unknown engine → `KeyError` with known list
-- [ ] stub `generate` SUCCESS, `len(timestamps)==total_tokens`, deterministic output for same seed/prompt
+- [ ] stub `generate` SUCCESS, stream-style `len(timestamps)==total_tokens`, deterministic output for same seed/prompt
+- [ ] e2e-only SUCCESS may use empty timestamps + `ttft_ms is None` (no fabricated marks)
 - [ ] stub without `load_model` → `EngineLoadError`
 
 ### C4 — Orchestrator (behavior, inject engine)

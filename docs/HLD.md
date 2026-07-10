@@ -270,7 +270,8 @@ class Engine(ABC):
 **Engine contract guarantees:**
 - `load_model` raises `EngineLoadError` if model weights are missing, corrupt, or incompatible. Never returns silently on failure.
 - `generate` raises `GenerationError` on unrecoverable failure (OOM, model crash). Returns a `GenerationResult` with `status=GenerationStatus.TIMEOUT` if per-iteration timeout is exceeded (iteration is flagged tainted, not retried). Never retries internally — retry policy is the orchestrator's responsibility.
-- `generate` guarantees: `len(token_timestamps) == total_tokens` always holds. `acceptance_rate` and `accepted_length_mean` are `None` for non-speculative backends (never omitted — explicitly `None`).
+- **Timestamps (stream vs e2e-only):** When the backend measures per-token times (stream path), `len(token_timestamps) == total_tokens` and `ttft_ms` is set from the first mark. When streaming is unavailable, engines use **e2e-only**: `token_timestamps=[]`, `ttft_ms=None`, wall-clock `e2e_ms`, and `total_tokens` from tokenizer/count — **never fabricate placeholder timestamps**. Empty timestamps do not need to equal `total_tokens`. Downstream metrics: decode tok/s, SITL, and TTFT require stream timestamps; e2e-only iterations still contribute to E2E (and memory) distributions only.
+- `acceptance_rate` and `accepted_length_mean` are `None` for non-speculative backends (never omitted — explicitly `None`).
 - `validate_correctness` returns `False` (never raises) if output diverges beyond tolerance. The orchestrator treats `False` as an abort signal.
 
 **GenerationResult (returned per iteration):**
@@ -285,8 +286,9 @@ class GenerationStatus(Enum):
 class GenerationResult:
     status: GenerationStatus
     output_text: str
-    token_timestamps: list[float]    # len == total_tokens, always
-    ttft_ms: float
+    # Stream: len == total_tokens (seconds from start). E2e-only: [] — do not invent.
+    token_timestamps: list[float]
+    ttft_ms: float | None            # None when TTFT not measured (e2e-only)
     total_tokens: int
     memory_peak_bytes: int
     thermal_state: ThermalReading
@@ -294,6 +296,7 @@ class GenerationResult:
     accepted_length_mean: float | None  # None for non-speculative backends
     power_watts: float | None        # None if powermetrics unavailable
     energy_per_token_joules: float | None  # power_watts * duration / total_tokens
+    e2e_ms: float | None             # wall-clock E2E; required for e2e-only path
 ```
 
 **Experiment Config (YAML shape):**
