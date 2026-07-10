@@ -137,14 +137,26 @@ class ExperimentConfig:
         )
         metrics = MetricsConfig(
             report_percentiles=list(metrics_raw.get("report_percentiles", [50, 90, 95, 99])),
-            report_trimmed_mean=bool(metrics_raw.get("report_trimmed_mean", True)),
-            report_std=bool(metrics_raw.get("report_std", True)),
+            report_trimmed_mean=_parse_bool(
+                metrics_raw.get("report_trimmed_mean", True),
+                field="metrics.report_trimmed_mean",
+            ),
+            report_std=_parse_bool(
+                metrics_raw.get("report_std", True),
+                field="metrics.report_std",
+            ),
             flag_cov_threshold=float(metrics_raw.get("flag_cov_threshold", 0.05)),
         )
         repro = ReproducibilityConfig(
             random_seed=int(repro_raw.get("random_seed", 42)),
-            record_git_commit=bool(repro_raw.get("record_git_commit", True)),
-            record_env_versions=bool(repro_raw.get("record_env_versions", True)),
+            record_git_commit=_parse_bool(
+                repro_raw.get("record_git_commit", True),
+                field="reproducibility.record_git_commit",
+            ),
+            record_env_versions=_parse_bool(
+                repro_raw.get("record_env_versions", True),
+                field="reproducibility.record_env_versions",
+            ),
         )
 
         return ExperimentConfig(
