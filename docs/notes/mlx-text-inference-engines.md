@@ -192,7 +192,11 @@ For each candidate (re-fetch pin on the day you start work):
 
 **Core**
 
-- [ ] Can we invoke **one** generation with fixed seed/temp under our orchestrator?
+- [ ] Can we drive **one** generation under our orchestrator (timed path for thruput)?
+- [ ] **Correctness gate** support (HLD §10.2 / FR9) — not “fixed seed only”:
+  - **Preferred:** deterministic arm at **temperature 0 + fixed seed** with exact (or agreed) match to a stored reference; and/or  
+  - **Fallback** when Metal / parallel kernels stay **nondeterministic even at temp=0**: token-level **log-probability / mean KL-divergence** vs reference (HLD default threshold ~0.01 nats/token), documented as the gate path used  
+  - Benchmark *timed* iterations may still use other sampling settings; the gate validates “is this backend correct?” separately from “how fast at temperature X?”
 - [ ] Can we get stream timestamps or honest e2e-only metrics (no fabricated TTFT)?
 - [ ] Library versions + model id pinable for `library_versions` / reproducibility?
 - [ ] License OK for this personal/research workbench?
