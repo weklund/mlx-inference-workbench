@@ -121,15 +121,17 @@ hardware-ceilings-write: ## Run probes and update configs/hardware/m5_max_128gb.
 metal-stream: ## Rust + MSL STREAM bandwidth ceiling only (release)
 	cargo run -p metal_stream --release
 
-lint-rust: ## rustfmt + clippy -D warnings (CI / pre-commit parity)
+lint-rust: ## rustfmt + clippy -D warnings + rustdoc -D warnings
 	cargo fmt --all -- --check
-	cargo clippy --workspace --all-targets -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
+	@# Public docs are part of the quality bar (missing_docs + rustdoc lints).
+	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
 test-rust: ## cargo test workspace (includes Metal host-oracle tests on macOS)
 	cargo test --workspace
 
 ci-rust: lint-rust test-rust ## Local mirror of Rust CI gates
-	@echo "ci-rust: fmt + clippy + test OK"
+	@echo "ci-rust: fmt + clippy + doc + test OK"
 
 # --- hygiene -----------------------------------------------------------------
 

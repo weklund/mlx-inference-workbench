@@ -25,7 +25,7 @@ from workbench.thermal import ThermalSensor, build_thermal_sensor, cooldown
 
 
 class OrchestratorError(Exception):
-    pass
+    """Benchmark lifecycle failure (gates, thermal abort, config)."""
 
 
 def resolve_correctness_reference(

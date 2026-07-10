@@ -7,14 +7,16 @@ combined conservatively with published specs.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import subprocess
 import time
-from dataclasses import dataclass
 from typing import Any
 
 
 @dataclass(frozen=True)
 class BandwidthProbeResult:
+    """Result of one empirical bandwidth probe (GB/s)."""
+
     gbs: float
     method: str
     buffer_bytes: int
@@ -24,6 +26,8 @@ class BandwidthProbeResult:
 
 @dataclass(frozen=True)
 class FlopsProbeResult:
+    """Result of one empirical matmul FLOPS probe (TFLOPS)."""
+
     tflops: float
     method: str
     m: int
@@ -35,6 +39,8 @@ class FlopsProbeResult:
 
 @dataclass(frozen=True)
 class ChipProbeResult:
+    """Best-effort host chip identity from sysctl / system_profiler."""
+
     chip: str | None
     memsize_bytes: int | None
     cpu_cores: int | None

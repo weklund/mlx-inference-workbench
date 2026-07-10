@@ -68,6 +68,8 @@ def test_missing_stream_api_is_e2e_only_no_fake_timestamps(monkeypatch):
 
 
 def test_type_error_stream_signature_is_e2e_only(monkeypatch):
+    """Call-time TypeError (incompatible kwargs) may fall back to e2e generate."""
+
     def bad_stream(*_a, **_k):
         raise TypeError("unexpected keyword argument 'sampler'")
 
@@ -83,6 +85,31 @@ def test_type_error_stream_signature_is_e2e_only(monkeypatch):
     assert result.token_timestamps == []
     assert result.ttft_ms is None
     assert result.e2e_ms is not None and result.e2e_ms > 0
+
+
+def test_type_error_during_stream_consume_is_generation_error(monkeypatch):
+    """TypeError after the stream has started must not silently fall back."""
+    calls: list[str] = []
+
+    def mid_stream_type_error(*_a, **_k):
+        calls.append("stream")
+        yield SimpleNamespace(text="partial")
+        raise TypeError("chunk missing .text shape")
+
+    def mlx_generate(*_a, **_k):
+        calls.append("generate")
+        return "should-not-run"
+
+    _install_fake_mlx(
+        monkeypatch,
+        stream_generate=mid_stream_type_error,
+        generate=mlx_generate,
+    )
+
+    eng = _engine()
+    with pytest.raises(GenerationError, match="chunk missing"):
+        eng.generate("hello", GenParams(max_tokens=4, seed=1))
+    assert calls == ["stream"]
 
 
 def test_stream_path_reports_measured_ttft(monkeypatch):

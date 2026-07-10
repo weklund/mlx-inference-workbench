@@ -1,6 +1,8 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    # Keep in lockstep with the ruff version from `uv run ruff --version`
+    # (or the nearest ruff-pre-commit tag). See docs/notes/python-lint.md.
+    rev: v0.15.21
     hooks:
       - id: ruff
         args: [--fix]
@@ -25,7 +27,7 @@ repos:
 
       - id: cargo-clippy
         name: cargo clippy
-        entry: cargo clippy --workspace --all-targets -- -D warnings
+        entry: cargo clippy --workspace --all-targets --all-features -- -D warnings
         language: system
         files: '(\.rs$|Cargo\.(toml|lock)|\.metal$)'
         pass_filenames: false
@@ -35,4 +37,11 @@ repos:
         entry: cargo test --workspace
         language: system
         files: '(\.rs$|Cargo\.(toml|lock)|\.metal$)'
+        pass_filenames: false
+
+      - id: cargo-doc
+        name: cargo doc (no-deps, deny warnings)
+        entry: bash -c 'RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps'
+        language: system
+        files: '(\.rs$|Cargo\.(toml|lock))'
         pass_filenames: false

@@ -6,3 +6,70 @@ members = ["crates/metal_stream"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/weklund/mlx-inference-workbench"
+rust-version = "1.75"
+
+# Pedantic-by-default scientific / kernel quality bar.
+# Crates opt in with `[lints] workspace = true`.
+# See docs/notes/rust-metal-dod.md.
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+# Force intentional documentation of public API surface.
+missing_debug_implementations = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "warn"
+missing_crate_level_docs = "warn"
+
+[workspace.lints.clippy]
+# Default groups elevated to deny so CI fails on warnings.
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+# --- Pedantic allowances that fight measurement / Metal host code ---
+# Doc requirements: we enforce missing_docs via rustc; clippy's extra
+# "document every Result/panic" is noise for probe CLIs.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# Scientific kernels use short math names (a, b, c, s, n).
+module_name_repetitions = "allow"
+similar_names = "allow"
+many_single_char_names = "allow"
+# Host fill / probe loops are clearer as explicit indexing sometimes.
+needless_range_loop = "allow"
+# float comparisons in tests use abs-diff or soft bounds.
+float_cmp = "allow"
+# cast_precision_loss is inherent when sizing GPU buffers from usize.
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# Metal bind closures and command-buffer builders.
+items_after_statements = "allow"
+# Criterion / probe style: allow unused underscore bindings.
+no_effect_underscore_binding = "allow"
+# must_use on every pure helper is noise; keep for fallible Results via rustc.
+must_use_candidate = "allow"
+# Wildcard imports from metal crate bindings are conventional.
+wildcard_imports = "allow"
+# Map/err chains in host code are often clearer as match.
+map_err_ignore = "allow"
+# Inline format args can hurt greppability of error strings.
+uninlined_format_args = "allow"
+# Cognitive complexity on dispatch helpers — tracked via review, not this lint.
+cognitive_complexity = "allow"
+# Oracle math mirrors MSL kernels literally; fused mul-add obscures the STREAM equations.
+suboptimal_flops = "allow"
+# Transitive metal-rs deps may pull duplicate crates; not actionable at workspace root.
+multiple_crate_versions = "allow"
+# Host verify/perf paths are intentionally linear; split only when readability demands.
+too_many_lines = "allow"
+# Pointer casts for Metal shared buffers are host-side and reviewed.
+ptr_as_ptr = "allow"
+as_ptr_cast_mut = "allow"
+# Nursery: keep warn; don't fail CI on experimental lints yet.
+# (level set above; individual nursery denials can be promoted later)

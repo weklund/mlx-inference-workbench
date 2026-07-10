@@ -41,8 +41,11 @@ jobs:
       - run: make lint
 
   lint-rust:
+    # macOS so clippy/doc typecheck the Metal host path (cfg(target_os = "macos")).
+    # Ubuntu would only see non-macOS stubs; product kernels live on Apple Silicon.
+    # Keep non-macOS stubs documented so linux-only tooling still passes if used.
     name: Lint (Rust)
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: check-rust
     if: needs.check-rust.outputs.has-rust == 'true'
     steps:
@@ -50,8 +53,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
+      # Parity with `make lint-rust` (pedantic workspace lints + rustdoc).
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
   # cargo-semver-checks needs a git baseline package. Skip publish=false crates and
   # packages that do not exist at the PR base (new crates — no prior API to break).
