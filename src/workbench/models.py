@@ -40,7 +40,7 @@ class GenerationResult:
     status: GenerationStatus
     output_text: str
     token_timestamps: list[float]
-    ttft_ms: float | None  # None when TTFT was not measured (e.g. synthesized timestamps)
+    ttft_ms: float | None  # None when TTFT was not measured (e2e-only / failed)
     total_tokens: int
     memory_peak_bytes: int
     thermal_state: ThermalReading
@@ -50,12 +50,11 @@ class GenerationResult:
     energy_per_token_joules: float | None = None
     e2e_ms: float | None = None
     error_message: str | None = None
-    # True when token_timestamps were fabricated from e2e (non-stream path);
-    # TTFT / per-token metrics must not be treated as measured.
-    timestamps_synthesized: bool = False
 
     def __post_init__(self) -> None:
-        if self.status == GenerationStatus.SUCCESS:
+        if self.status == GenerationStatus.SUCCESS and self.token_timestamps:
+            # Streamed path: per-token times must align with token count.
+            # E2e-only (non-stream) may leave token_timestamps empty.
             if len(self.token_timestamps) != self.total_tokens:
                 raise ValueError(
                     f"token_timestamps length {len(self.token_timestamps)} "

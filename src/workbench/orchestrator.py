@@ -19,7 +19,7 @@ from workbench.models import (
     RunRecord,
 )
 from workbench.paths import resolve_path
-from workbench.prompts import load_dataset
+from workbench.prompts import PromptItem, load_dataset
 from workbench.storage.run_store import RunStore
 from workbench.thermal import build_thermal_sensor, cooldown
 
@@ -28,15 +28,41 @@ class OrchestratorError(Exception):
     pass
 
 
+def resolve_correctness_reference(
+    items: tuple[PromptItem, ...] | list[PromptItem],
+    *,
+    override: str = "",
+) -> str | None:
+    """CLI/test override wins; else first item's dataset reference; else None."""
+    o = (override or "").strip()
+    if o:
+        return o
+    if not items:
+        return None
+    ref = (items[0].reference or "").strip()
+    return ref or None
+
+
 def _run_correctness_gate(
     engine: Engine,
     prompt: str,
     params: GenParams,
     *,
-    reference: str,
+    reference: str | None,
+    require: bool,
 ) -> None:
-    """Fail closed when a reference is provided. Skip when reference is blank (Phase 1)."""
-    if not (reference or "").strip():
+    """Timed generate + base score_correctness when a reference exists.
+
+    - No reference and not require → skip (smoke without gold outputs).
+    - No reference and require → fail closed.
+    - Reference present → fail closed on score mismatch / TIMEOUT / ERROR.
+    """
+    if reference is None:
+        if require:
+            raise OrchestratorError(
+                "require_correctness is set but no reference on the first prompt "
+                "(add JSONL 'reference' or pass correctness_reference=)"
+            )
         return
     result = timed_generate(engine, prompt, params)
     if not engine.score_correctness(result, reference=reference, tolerance=0.0):
@@ -52,9 +78,8 @@ def run_experiment(
 ) -> RunRecord:
     """Run a timed benchmark.
 
-    correctness_reference: when non-empty, run timed generate + score_correctness
-    and abort on failure. Empty (default) skips the gate until the harness has
-    real dataset references — avoids a fake gate with reference=\"\".
+    Correctness uses the first prompt's dataset ``reference`` when present, or
+    ``correctness_reference`` override. See ``BenchmarkConfig.require_correctness``.
     """
     root = (repo_root or Path.cwd()).resolve()
     store = RunStore(
@@ -92,7 +117,14 @@ def run_experiment(
         timeout_sec=float(config.benchmark.per_iteration_timeout_sec),
     )
 
-    _run_correctness_gate(eng, prompts[0], params, reference=correctness_reference)
+    ref = resolve_correctness_reference(items, override=correctness_reference)
+    _run_correctness_gate(
+        eng,
+        prompts[0],
+        params,
+        reference=ref,
+        require=config.benchmark.require_correctness,
+    )
 
     # Warmup (same timed_generate as measure)
     for p in iter_warmup_prompts(prompts, config.benchmark.warmup_iterations):

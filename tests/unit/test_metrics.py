@@ -78,21 +78,20 @@ def test_failed_iterations_do_not_count_as_valid_samples():
     assert summary.total_iterations == 3
 
 
-def test_synthesized_timestamps_excluded_from_ttft_and_token_metrics():
-    """Non-stream fabricated timestamps must not pollute TTFT / decode / SITL."""
+def test_e2e_only_results_excluded_from_ttft_and_token_metrics():
+    """Non-stream (empty timestamps, no TTFT) must not invent decode / SITL / TTFT."""
     measured = _ok(12.0, [0.012, 0.04, 0.06])
-    synthesized = GenerationResult(
+    e2e_only = GenerationResult(
         status=GenerationStatus.SUCCESS,
         output_text="x",
-        token_timestamps=[0.02, 0.04, 0.06],
+        token_timestamps=[],
         ttft_ms=None,
         total_tokens=3,
         memory_peak_bytes=1000,
         thermal_state=ThermalReading(method="test"),
         e2e_ms=60.0,
-        timestamps_synthesized=True,
     )
-    summary = summarize_iterations([measured, synthesized], cov_threshold=0.05)
+    summary = summarize_iterations([measured, e2e_only], cov_threshold=0.05)
     assert summary.ttft_ms is not None
     assert summary.ttft_ms.n == 1
     assert summary.ttft_ms.mean == 12.0

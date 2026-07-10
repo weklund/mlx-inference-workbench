@@ -14,6 +14,8 @@ class PromptItem:
     category: str
     prompt: str
     expected_tokens_approx: int | None = None
+    # Optional expected output for the correctness gate (temp=0 / fixed seed).
+    reference: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,12 +91,15 @@ def load_dataset(
                 obj = json.loads(line)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSONL at line {i}: {e}") from e
+            ref_raw = obj.get("reference")
+            reference = None if ref_raw is None else str(ref_raw)
             items.append(
                 PromptItem(
                     id=str(obj["id"]),
                     category=str(obj.get("category", "unknown")),
                     prompt=str(obj["prompt"]),
                     expected_tokens_approx=obj.get("expected_tokens_approx"),
+                    reference=reference,
                 )
             )
 
