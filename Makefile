@@ -11,6 +11,7 @@ COV_JSON := coverage.json
 SMOKE_CONFIG := configs/experiments/smoke_minimal.yaml
 AGENTIC_STUB_CONFIG := configs/experiments/agentic_coding_v1_stub.yaml
 SMOKE_MLX_TINY_CONFIG := configs/experiments/smoke_mlx_lm_tiny.yaml
+SMOKE_MTPLX_TINY_CONFIG := configs/experiments/smoke_mtplx_tiny.yaml
 BASELINE_MLX_CONFIG := configs/experiments/baseline_mlx_lm.yaml
 
 # Thermal (override: make thermal-run SESSION=morning DAY=2 RUNS=5)
@@ -19,7 +20,7 @@ DAY ?=
 RUNS ?= 5
 
 .PHONY: help sync sync-update lint fmt test test-unit test-integration \
-	coverage ci smoke smoke-agentic smoke-mlx-tiny baseline-mlx-lm \
+	coverage ci smoke smoke-agentic smoke-mlx-tiny smoke-mtplx-tiny baseline-mlx-lm \
 	bench-list bench-compare bench-report \
 	thermal-run thermal-analyze thermal-analyze-protocol \
 	hardware-ceilings hardware-ceilings-write metal-stream \
@@ -80,6 +81,9 @@ smoke-agentic: ## Stub run pinned to agentic_coding_v1 dataset
 
 smoke-mlx-tiny: ## Real mlx-lm smoke (tiny Qwen3 0.6B-4bit; requires Metal + weights)
 	$(UV) run bench run $(SMOKE_MLX_TINY_CONFIG)
+
+smoke-mtplx-tiny: ## Real MTPLX smoke (Qwen3.5-0.8B MTP; requires --extra mtplx + Metal)
+	$(UV) run bench run $(SMOKE_MTPLX_TINY_CONFIG)
 
 baseline-mlx-lm: ## Provisional mlx-lm baseline (Qwen3-8B-4bit + agentic_coding_v1; thermal on)
 	$(UV) run bench run $(BASELINE_MLX_CONFIG)
