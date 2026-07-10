@@ -63,12 +63,8 @@ def _ensure_builtins() -> None:
     except ImportError:
         pass
 
-    # Register even when the optional ``mtplx`` package is missing so
-    # create_engine("mtplx") returns a plugin that fails at load_model with
-    # a clear EngineLoadError (mirrors optional-dep UX for local smoke).
-    try:
-        from workbench.engines.mtplx_engine import MtplxEngine
+    # Always register the adapter. Optional ``mtplx`` package is handled in
+    # MtplxEngine.load_model(); adapter ImportError should surface here.
+    from workbench.engines.mtplx_engine import MtplxEngine
 
-        _register_builtin("mtplx", MtplxEngine)
-    except ImportError:
-        pass
+    _register_builtin("mtplx", MtplxEngine)
