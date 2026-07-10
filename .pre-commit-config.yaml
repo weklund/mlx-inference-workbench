@@ -1,3 +1,8 @@
+# Install all hook types so range commitlint runs on push:
+#   uv run pre-commit install --install-hooks
+#   # or: uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Keep in lockstep with the ruff version from `uv run ruff --version`
@@ -11,12 +16,25 @@ repos:
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.18.0
     hooks:
+      # Single new commit (message file). Does not scan branch history.
       - id: commitlint
         stages: [commit-msg]
         additional_dependencies: ["@commitlint/config-conventional"]
 
   - repo: local
     hooks:
+      # Full branch range — same idea as CI commitlint job (catches bad merges).
+      - id: commitlint-range
+        name: commitlint (branch range vs main)
+        entry: bash scripts/commitlint_range.sh
+        language: node
+        additional_dependencies:
+          - "@commitlint/cli@19.8.1"
+          - "@commitlint/config-conventional@19.8.1"
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
       # Run when Rust sources, Cargo manifests, or MSL shaders change.
       - id: cargo-fmt
         name: cargo fmt

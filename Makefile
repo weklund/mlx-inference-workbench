@@ -23,7 +23,7 @@ RUNS ?= 5
 	bench-list bench-compare bench-report \
 	thermal-run thermal-analyze thermal-analyze-protocol \
 	hardware-ceilings hardware-ceilings-write metal-stream \
-	lint-rust test-rust ci-rust clean
+	lint-rust test-rust ci-rust commitlint hooks clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -42,6 +42,13 @@ sync-update: ## Refresh lockfile and install (local; not for CI)
 lint: ## Ruff check + format check (CI)
 	$(UV) run ruff check .
 	$(UV) run ruff format --check .
+
+commitlint: ## Conventional commits on branch (merge-base main..HEAD; CI parity)
+	bash scripts/commitlint_range.sh
+
+hooks: ## Install pre-commit + commit-msg + pre-push hooks
+	$(UV) run pre-commit install --install-hooks \
+		--hook-type pre-commit --hook-type commit-msg --hook-type pre-push
 
 fmt: ## Auto-format with ruff (local)
 	$(UV) run ruff format .

@@ -13,6 +13,24 @@
 
 Pin **ruff-pre-commit** to the same major.minor as `uv run ruff --version` (see `.pre-commit-config.yaml`).
 
+## Commit messages (local = CI)
+
+| When | What runs |
+|------|-----------|
+| **commit-msg** | Single new commit subject (conventional type) |
+| **pre-push** | **Full branch range** `merge-base(origin/main)..HEAD` — same idea as CI `commitlint --from … --to …` |
+| Manual | `make commitlint` |
+
+Install hooks (once per clone):
+
+```bash
+make hooks
+# or: uv run pre-commit install --install-hooks \
+#       --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+```
+
+Without **pre-push**, a bad merge commit message can land on the branch and only fail in CI.
+
 ## Rule philosophy
 
 1. **Explicit `select`** — do not use `ALL` (new rules on upgrade surprise CI).
