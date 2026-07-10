@@ -72,6 +72,13 @@ credentials.json
 *.log
 logs/
 
+# Coverage
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
+coverage.xml
+
 # Metal compiled shaders (rebuild from source)
 *.metallib
 *.air

@@ -18,6 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.4.0",
 ]
 profiling = [
@@ -42,6 +43,7 @@ dev = [
     "pytest-benchmark>=4.0",
     "ruff>=0.4.0",
     "pre-commit>=3.7",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -60,6 +62,35 @@ markers = [
     "integration: cross-language or multi-component tests",
     "nightly: only runs in nightly scheduled CI",
     "weekly: only runs in weekly scheduled CI",
+]
+
+# Coverage gate (issue #23): scientific core only — not scripts/, spikes/, or CLI chrome.
+# Overall floor is intentionally conservative (80%); raise toward 90% as tests grow.
+[tool.coverage.run]
+branch = true
+source = ["workbench"]
+relative_files = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+precision = 1
+show_missing = true
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/workbench",
+    "*/site-packages/workbench",
 ]
 
 [build-system]
