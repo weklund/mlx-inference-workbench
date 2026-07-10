@@ -30,11 +30,26 @@ We measure **single-user, single-stream** (one request at a time) text LLM infer
 | In scope for plugins | Out of scope as product goals (HLD §7) |
 |----------------------|----------------------------------------|
 | Programmatic generate/stream with honest timings | Continuous batching / multi-user serving as a *feature* |
-| Same prompts, thermal class, schema gates | OpenAI-compatible server product UX |
+| Comparable runs only under the **comparability gate** (below) | OpenAI-compatible server product UX |
 | Optional speculative / cache metrics when measurable | Multimodal image workloads (text path only) |
 | | **Training / fine-tuning / distillation** (separate from inference engines) |
 
-**Implication:** A project can be an excellent *local server* and still be a **poor** first Engine plugin if it only exposes HTTP, batches many users, or hides per-token timing. Prefer libraries (or servers with a clear single-request programmatic path) that we can drive under our orchestrator.
+**Comparability (explicit — not “same setup” hand-waving).** Official cross-backend claims require matching metadata; **missing or mismatched fields are an explicit gate violation** (`workbench.comparability.check_comparable` / `check_runs_comparable`). Required equal fields today:
+
+| Requirement | Metadata / field |
+|-------------|------------------|
+| Prompt dataset integrity | **SHA-256** of the JSONL (`prompt_dataset_hash`) |
+| Hardware class | **hardware profile** id (e.g. `m5_max_128gb`) |
+| Metrics schema | **metrics_schema_version** |
+| Experiment schema | **schema_version** |
+| Engine interface | **engine_interface_version** |
+| Thermal observability quality | **thermal_monitoring** class: `full` \| `degraded` \| `off` (any mismatch fails, including full vs degraded) |
+| Material host identity | Chip fingerprint when present (`hardware_fingerprint.chip`) |
+| Material OS + libraries | Captured in run metadata (`hardware_fingerprint` OS fields; **`library_versions`**) — must be recorded for official claims; treat material drift as a **comparability / reporting violation** (do not paper over with “close enough”) |
+
+Also: ≥2 valid iterations per side for distribution compare; `quality_tag=insufficient_data` blocks.
+
+**Implication:** A project can be an excellent *local server* and still be a **poor** first Engine plugin if it only exposes HTTP, batches many users, or hides per-token timing. Prefer libraries (or servers with a clear single-request programmatic path) that we can drive under our orchestrator **and** that can populate the metadata above.
 
 Related **non-MLX** compare arms (still HLD / M2): **llama.cpp** Metal (#15), **BaseRT** (API TBD), **Custom kernel** (M3). **MTPLX** (#9) is MLX-adjacent speculative stack — keep as first multi-backend target.
 
