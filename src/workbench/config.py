@@ -11,6 +11,33 @@ import yaml
 
 SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0"})
 
+# Explicit string forms only — never use bool(value) (bool("false") is True).
+_BOOL_TRUE = frozenset({"true", "yes", "1", "on"})
+_BOOL_FALSE = frozenset({"false", "no", "0", "off"})
+
+
+def _parse_bool(value: Any, *, field: str) -> bool:
+    """Strict boolean: real bools, or a small set of explicit string forms.
+
+    Rejects other types (e.g. int 2) and ambiguous strings so a quoted
+    ``"false"`` cannot silently enable a setting via ``bool("false")``.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        key = value.strip().lower()
+        if key in _BOOL_TRUE:
+            return True
+        if key in _BOOL_FALSE:
+            return False
+        raise ValueError(
+            f"{field} must be a boolean (true/false); got string {value!r} "
+            f"(quoted boolean-like strings must be true/false/yes/no/on/off/1/0)"
+        )
+    raise ValueError(
+        f"{field} must be a boolean (true/false); got {value!r} ({type(value).__name__})"
+    )
+
 
 @dataclass
 class ModelConfig:
@@ -93,8 +120,13 @@ class ExperimentConfig:
             prompt_dataset=str(bench_raw.get("prompt_dataset", "datasets/smoke_v1.jsonl")),
             prompt_checksum=bench_raw.get("prompt_checksum", "datasets/smoke_v1.sha256"),
             cooldown_between_runs_sec=float(bench_raw.get("cooldown_between_runs_sec", 0)),
-            monitor_thermal=bool(bench_raw.get("monitor_thermal", True)),
-            abort_if_throttling=bool(bench_raw.get("abort_if_throttling", False)),
+            monitor_thermal=_parse_bool(
+                bench_raw.get("monitor_thermal", True), field="benchmark.monitor_thermal"
+            ),
+            abort_if_throttling=_parse_bool(
+                bench_raw.get("abort_if_throttling", False),
+                field="benchmark.abort_if_throttling",
+            ),
             max_prompts=bench_raw.get("max_prompts"),
         )
         metrics = MetricsConfig(
@@ -119,7 +151,7 @@ class ExperimentConfig:
             metrics=metrics,
             reproducibility=repro,
             results_dir=str(data.get("results_dir", "benchmarks/results")),
-            enable_mlflow=bool(data.get("enable_mlflow", True)),
+            enable_mlflow=_parse_bool(data.get("enable_mlflow", True), field="enable_mlflow"),
             source_path=source_path,
         )
 

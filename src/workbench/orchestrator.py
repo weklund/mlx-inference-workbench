@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeout
 from pathlib import Path
 
 from workbench.config import ExperimentConfig
 from workbench.engines.base import Engine, GenParams
 from workbench.engines.registry import create_engine
+from workbench.engines.timeout import generate_with_timeout
 from workbench.hardware import capture_fingerprint, capture_git_sha, library_versions
 from workbench.metrics import summarize_iterations
 from workbench.models import (
@@ -18,7 +17,6 @@ from workbench.models import (
     GenerationStatus,
     RunMetadata,
     RunRecord,
-    ThermalReading,
 )
 from workbench.paths import resolve_path
 from workbench.prompts import load_dataset
@@ -28,33 +26,6 @@ from workbench.thermal import build_thermal_sensor, cooldown
 
 class OrchestratorError(Exception):
     pass
-
-
-def _generate_with_timeout(
-    engine: Engine,
-    prompt: str,
-    params: GenParams,
-) -> GenerationResult:
-    """Enforce wall-clock timeout around engine.generate (HLD: TIMEOUT, not hang)."""
-    timeout = params.timeout_sec
-    if timeout is None or timeout <= 0:
-        return engine.generate(prompt, params)
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        fut = pool.submit(engine.generate, prompt, params)
-        try:
-            return fut.result(timeout=timeout)
-        except FuturesTimeout:
-            return GenerationResult(
-                status=GenerationStatus.TIMEOUT,
-                output_text="",
-                token_timestamps=[],
-                ttft_ms=0.0,
-                total_tokens=0,
-                memory_peak_bytes=0,
-                thermal_state=ThermalReading(method="timeout"),
-                error_message=f"per-iteration timeout exceeded ({timeout}s)",
-            )
 
 
 def run_experiment(
@@ -114,7 +85,7 @@ def run_experiment(
         prompt = prompts[i % len(prompts)]
         pre = thermal.read()
         try:
-            result = _generate_with_timeout(eng, prompt, params)
+            result = generate_with_timeout(eng, prompt, params)
             # Attach orchestrator thermal reading when engine succeeded
             if result.status == GenerationStatus.SUCCESS:
                 result.thermal_state = pre
@@ -160,7 +131,7 @@ def run_experiment(
         prompt_dataset_hash=dataset.sha256,
         hardware_profile=config.hardware_profile,
         hardware_fingerprint=fingerprint,
-        git_sha=capture_git_sha() if config.reproducibility.record_git_commit else None,
+        git_sha=(capture_git_sha(root) if config.reproducibility.record_git_commit else None),
         library_versions=library_versions() if config.reproducibility.record_env_versions else {},
         random_seed=config.reproducibility.random_seed,
         schema_version=config.schema_version,

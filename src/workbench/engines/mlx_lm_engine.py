@@ -7,7 +7,12 @@ from typing import Any
 
 from workbench.config import ModelConfig
 from workbench.engines.base import Engine, EngineLoadError, GenerationError, GenParams
+from workbench.engines.timeout import generate_with_timeout
 from workbench.models import GenerationResult, GenerationStatus, ThermalReading
+
+# Align correctness-gate deadline with BenchmarkConfig.per_iteration_timeout_sec default
+# so free-form validation cannot hang when the orchestrator does not pass GenParams.
+_DEFAULT_CORRECTNESS_TIMEOUT_SEC = 300.0
 
 
 class MlxLmEngine(Engine):
@@ -38,7 +43,8 @@ class MlxLmEngine(Engine):
         self._ensure()
         for _ in range(n):
             for p in prompts[:1]:
-                self.generate(p, params)
+                # Same wall-clock guard as timed iterations (params.timeout_sec).
+                generate_with_timeout(self, p, params)
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         self._ensure()
@@ -54,27 +60,41 @@ class MlxLmEngine(Engine):
             else make_sampler(temp=0.0)
         )
 
-        # Token-level timestamps: approximate via stream if available, else single e2e split.
+        # Token-level timestamps: measured via stream when available; otherwise
+        # synthesize uniform splits from e2e (must not be reported as measured TTFT).
         start = time.perf_counter()
         timestamps: list[float] = []
         pieces: list[str] = []
+        output: str | None = None
+        timestamps_synthesized = False
+
+        # Only treat missing/incompatible stream API as fallback triggers — not
+        # RuntimeError/OOM/etc., which must reach the outer GenerationError path.
+        try:
+            from mlx_lm import stream_generate as _stream_generate
+        except ImportError:
+            _stream_generate = None
 
         try:
-            # Prefer stream_generate when present
-            try:
-                from mlx_lm import stream_generate
+            if _stream_generate is not None:
+                try:
+                    for response in _stream_generate(
+                        self._model,
+                        self._tokenizer,
+                        prompt=prompt,
+                        max_tokens=params.max_tokens,
+                        sampler=sampler,
+                    ):
+                        pieces.append(response.text)
+                        timestamps.append(time.perf_counter() - start)
+                    output = "".join(pieces)
+                except TypeError:
+                    # Signature / return-shape mismatch with this mlx-lm version.
+                    pieces.clear()
+                    timestamps.clear()
+                    output = None
 
-                for response in stream_generate(
-                    self._model,
-                    self._tokenizer,
-                    prompt=prompt,
-                    max_tokens=params.max_tokens,
-                    sampler=sampler,
-                ):
-                    pieces.append(response.text)
-                    timestamps.append(time.perf_counter() - start)
-                output = "".join(pieces)
-            except Exception:
+            if output is None:
                 output = mlx_generate(
                     self._model,
                     self._tokenizer,
@@ -82,20 +102,22 @@ class MlxLmEngine(Engine):
                     max_tokens=params.max_tokens,
                     sampler=sampler,
                 )
-                # No per-token stream — synthesize uniform timestamps from e2e
+                # No per-token stream — synthesize uniform timestamps from e2e only.
                 e2e = time.perf_counter() - start
-                # estimate token count
                 n_tok = max(1, len(self._tokenizer.encode(output)))
                 timestamps = [e2e * (i + 1) / n_tok for i in range(n_tok)]
+                timestamps_synthesized = True
         except Exception as e:
             raise GenerationError(str(e)) from e
 
         if not timestamps:
             timestamps = [time.perf_counter() - start]
+            timestamps_synthesized = True
 
         total_tokens = len(timestamps)
-        ttft_ms = timestamps[0] * 1000.0
         e2e_ms = timestamps[-1] * 1000.0
+        # Measured TTFT only when stream path produced real per-token times.
+        ttft_ms = None if timestamps_synthesized else timestamps[0] * 1000.0
 
         return GenerationResult(
             status=GenerationStatus.SUCCESS,
@@ -108,6 +130,7 @@ class MlxLmEngine(Engine):
                 method="none", thermal_pressure=None, notes="filled_by_orchestrator"
             ),
             e2e_ms=e2e_ms,
+            timestamps_synthesized=timestamps_synthesized,
         )
 
     def get_memory_usage_bytes(self) -> int:
@@ -120,7 +143,15 @@ class MlxLmEngine(Engine):
             return 0
 
     def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        result = self.generate(prompt, GenParams(max_tokens=64, temperature=0.0, seed=42))
+        params = GenParams(
+            max_tokens=64,
+            temperature=0.0,
+            seed=42,
+            timeout_sec=_DEFAULT_CORRECTNESS_TIMEOUT_SEC,
+        )
+        result = generate_with_timeout(self, prompt, params)
+        if result.status in (GenerationStatus.ERROR, GenerationStatus.TIMEOUT):
+            return False
         if tolerance <= 0:
             # For real models, exact match is too strict for free-form prompts.
             # Smoke path uses stub. Here: non-empty output is the soft gate unless reference set.

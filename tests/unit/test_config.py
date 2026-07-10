@@ -80,3 +80,73 @@ def test_benchmark_defaults_when_section_sparse(tmp_path: Path):
     assert cfg.benchmark.warmup_iterations >= 1
     assert cfg.benchmark.timed_iterations >= 1
     assert cfg.metrics.flag_cov_threshold == 0.05
+
+
+def _minimal_config(**overrides) -> dict:
+    data = {
+        "schema_version": "1.0",
+        "experiment": {"name": "t"},
+        "hardware": {"profile": "x"},
+        "model": {"name": "m", "backend": "stub", "quantization": "n/a"},
+        "benchmark": {},
+    }
+    data.update(overrides)
+    return data
+
+
+def test_yaml_boolean_false_disables_flags(tmp_path: Path):
+    """Unquoted YAML false must disable settings (not be treated as truthy)."""
+    path = _write_yaml(
+        tmp_path / "flags.yaml",
+        _minimal_config(
+            enable_mlflow=False,
+            benchmark={
+                "monitor_thermal": False,
+                "abort_if_throttling": False,
+            },
+        ),
+    )
+    cfg = load_config(path)
+    assert cfg.enable_mlflow is False
+    assert cfg.benchmark.monitor_thermal is False
+    assert cfg.benchmark.abort_if_throttling is False
+
+
+def test_quoted_false_string_is_not_silently_enabled(tmp_path: Path):
+    """Quoted 'false' must never become True via bool('false')."""
+    # Write raw YAML so values stay strings after parse.
+    path = tmp_path / "quoted.yaml"
+    path.write_text(
+        """
+schema_version: "1.0"
+experiment: {name: t}
+hardware: {profile: x}
+model: {name: m, backend: stub, quantization: n/a}
+enable_mlflow: "false"
+benchmark:
+  monitor_thermal: "false"
+  abort_if_throttling: "false"
+""",
+        encoding="utf-8",
+    )
+    cfg = load_config(path)
+    assert cfg.enable_mlflow is False
+    assert cfg.benchmark.monitor_thermal is False
+    assert cfg.benchmark.abort_if_throttling is False
+
+
+def test_programmatic_non_boolean_rejected():
+    from workbench.config import ExperimentConfig
+
+    with pytest.raises(ValueError, match="enable_mlflow"):
+        ExperimentConfig.from_dict(
+            _minimal_config(enable_mlflow="maybe"),
+        )
+    with pytest.raises(ValueError, match="monitor_thermal"):
+        ExperimentConfig.from_dict(
+            _minimal_config(benchmark={"monitor_thermal": 2}),
+        )
+    with pytest.raises(ValueError, match="abort_if_throttling"):
+        ExperimentConfig.from_dict(
+            _minimal_config(benchmark={"abort_if_throttling": None}),
+        )

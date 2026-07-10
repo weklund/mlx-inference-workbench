@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from workbench.config import ModelConfig
-from workbench.models import ENGINE_INTERFACE_VERSION, GenerationResult
+from workbench.models import ENGINE_INTERFACE_VERSION, GenerationResult, GenerationStatus
 
 
 class EngineLoadError(Exception):
@@ -47,17 +47,26 @@ class Engine(ABC):
         return 0
 
     def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        """Return False on mismatch; never raise for divergence."""
+        """Return False on mismatch; never raise for divergence.
+
+        Fail closed: blank reference, ERROR/TIMEOUT generation, or empty output
+        all reject. Zero tolerance requires exact match; tolerant mode requires a
+        non-empty reference contained in (or equal to) the output.
+        """
+        ref = (reference or "").strip()
+        if not ref:
+            return False
+
         result = self.generate(
             prompt,
-            GenParams(max_tokens=max(16, len(reference.split()) + 8), temperature=0.0, seed=42),
+            GenParams(max_tokens=max(16, len(ref.split()) + 8), temperature=0.0, seed=42),
         )
+        # Fail closed on failed generation before examining output text.
+        if result.status in (GenerationStatus.ERROR, GenerationStatus.TIMEOUT):
+            return False
         if not result.output_text:
             return False
         if tolerance <= 0:
-            return result.output_text.strip() == reference.strip()
-        # soft: reference must be substring or equal
-        return (
-            reference.strip() in result.output_text
-            or result.output_text.strip() == reference.strip()
-        )
+            return result.output_text.strip() == ref
+        # soft: non-empty reference must be substring or exact match
+        return ref in result.output_text or result.output_text.strip() == ref

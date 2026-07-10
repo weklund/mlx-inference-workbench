@@ -80,3 +80,36 @@ def test_load_missing_run_raises(tmp_path: Path):
     store = RunStore(tmp_path, enable_mlflow=False)
     with pytest.raises(FileNotFoundError):
         store.load("does-not-exist")
+
+
+def test_summary_write_leaves_no_tmp_and_is_valid_json(tmp_path: Path):
+    store = RunStore(tmp_path, enable_mlflow=False)
+    store.write(_sample_record("atomic1"))
+    run_dir = tmp_path / "atomic1"
+    assert (run_dir / "summary.json").is_file()
+    assert not (run_dir / "summary.json.tmp").exists()
+    import json
+
+    data = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+    assert "metrics" in data and "metrics_values" in data
+    assert data["metadata"]["run_id"] == "atomic1"
+
+
+def test_write_summary_atomic_helper_replaces_via_tmp(tmp_path: Path, monkeypatch):
+    """Both write paths must go through tmp + replace (not direct write_text)."""
+    replaces: list[tuple[str, str]] = []
+    original_replace = Path.replace
+
+    def tracking_replace(self: Path, target: Path):
+        replaces.append((str(self), str(target)))
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", tracking_replace)
+
+    store = RunStore(tmp_path, enable_mlflow=False)
+    store.write(_sample_record("atomic2"))
+
+    # Initial summary + post-parquet rewrite = two atomic replaces of summary.json
+    summary_replaces = [p for p in replaces if p[1].endswith("summary.json")]
+    assert len(summary_replaces) == 2
+    assert all(src.endswith("summary.json.tmp") for src, _ in summary_replaces)
