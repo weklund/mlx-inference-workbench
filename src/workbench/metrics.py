@@ -57,9 +57,7 @@ def compute_distribution(
 
 
 def _decode_tok_s(result: GenerationResult) -> float | None:
-    """Tokens after first / time after first token."""
-    if result.timestamps_synthesized:
-        return None  # uniform e2e splits are not measured inter-token times
+    """Tokens after first / time after first token (requires measured per-token times)."""
     if result.total_tokens < 2 or len(result.token_timestamps) < 2:
         return None
     # timestamps are absolute seconds from start of generation
@@ -72,9 +70,7 @@ def _decode_tok_s(result: GenerationResult) -> float | None:
 
 
 def _sitl_ms(result: GenerationResult) -> float | None:
-    """Mean inter-token latency in ms (excluding TTFT interval)."""
-    if result.timestamps_synthesized:
-        return None
+    """Mean inter-token latency in ms (requires measured per-token times)."""
     if result.total_tokens < 2 or len(result.token_timestamps) < 2:
         return None
     gaps = np.diff(result.token_timestamps)
@@ -94,9 +90,7 @@ def _e2e_ms(result: GenerationResult) -> float:
 
 
 def _measured_ttft_ms(result: GenerationResult) -> float | None:
-    """TTFT only when actually measured (not synthesized from e2e)."""
-    if result.timestamps_synthesized or result.ttft_ms is None:
-        return None
+    """TTFT only when engines recorded it (stream path); e2e-only leaves None."""
     return result.ttft_ms
 
 
