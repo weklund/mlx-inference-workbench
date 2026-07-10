@@ -23,6 +23,8 @@ benchmark:
   monitor_thermal: false
   abort_if_throttling: false
   max_prompts: 2
+  # smoke dataset has no gold outputs; set true + JSONL "reference" for real gates
+  require_correctness: false
 
 metrics:
   report_percentiles: [50, 90, 95, 99]
