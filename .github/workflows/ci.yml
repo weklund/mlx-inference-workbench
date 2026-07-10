@@ -31,9 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
+      # Same recipe as local: make lint (see Makefile)
+      - run: make sync
+      - run: make lint
 
   lint-rust:
     name: Lint (Rust)
@@ -61,14 +61,18 @@ jobs:
       - uses: obi1kenobi/cargo-semver-checks-action@v2
 
   test-python:
-    name: Test (Python)
+    # Name is a required status check on main (branch protection).
+    # Coverage failure exits non-zero and blocks merge.
+    # Recipe must stay identical to local: make coverage
+    name: Test + Coverage (Python)
     runs-on: macos-latest
     needs: lint-python
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync --frozen --extra dev
-      - run: uv run pytest -m "not gpu and not slow" --tb=short
+      - run: make sync
+      - name: Unit tests + coverage gate
+        run: make coverage
 
   test-rust:
     name: Test (Rust)
@@ -98,8 +102,8 @@ jobs:
         run: |
           uv pip install maturin
           uv run maturin develop --release
-      - run: uv sync --frozen --extra dev
-      - run: uv run pytest -m "integration" --tb=short || [ $? -eq 5 ]
+      - run: make sync
+      - run: make test-integration
 
   commitlint:
     name: Commit Messages
