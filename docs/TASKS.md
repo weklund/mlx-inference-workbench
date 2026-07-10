@@ -131,28 +131,22 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Define Engine ABC + GenParams / timed generate (orchestrator-owned timeout, #18)
 - [x] Define GenerationResult dataclass with GenerationStatus enum
 - [x] Stub engine for CI / smoke
-- [x] mlx-lm engine plugin (load + generate; first **official** baseline still #7)
-- [ ] Define EngineLoadError, GenerationError exceptions
-- [ ] Implement correctness gate (tiered: bitwise at temp=0, KL-divergence fallback)
-- [ ] Implement mlx-lm engine plugin (v1)
-  - [ ] load_model via mlx-lm API
-  - [ ] warmup (N iterations discarded)
-  - [ ] generate with per-token timestamps
-  - [ ] validate_correctness at temp=0/fixed seed
-  - [ ] get_memory_usage
-- [ ] Per-iteration timeout (`per_iteration_timeout_sec`) with kill on timeout
+- [x] Engine load / generation error paths (as used by registry + orchestrator)
+- [x] Correctness scoring hook + dataset `reference` / `require_correctness` (#19)
+  - [ ] Tiered KL-divergence fallback — residual / future
+- [x] mlx-lm engine plugin (load + stream/e2e generate; first **official** baseline still [#7](https://github.com/weklund/mlx-inference-workbench/issues/7))
+- [x] Per-iteration timeout (`per_iteration_timeout_sec`) via orchestrator timed_generate
 
 ### Experiment Config
-- [ ] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
-- [ ] Validate configs against declared schema version
-- [ ] Create first hardware profile: `m5_max_128gb.yaml`
-- [ ] Create default benchmark config
+- [x] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
+- [x] Validate configs against declared schema version + strict bools (#26)
+- [x] Create first hardware profile: `m5_max_128gb.yaml`
+- [x] Create default/smoke benchmark config (`configs/experiments/smoke_minimal.yaml`)
 
 ### Prompt Dataset
-- [ ] Curate ~20 agentic coding prompts (tool calls, multi-turn reasoning, code generation)
-- [ ] Save as JSONL with id, category, prompt, expected_tokens_approx
-- [ ] Generate SHA-256 checksum file
-- [ ] Document dataset v1 in datasets/README.md
+- [x] Smoke dataset + SHA-256 (`datasets/smoke_v1.jsonl`) for harness CI
+- [ ] Curate ~20 agentic coding prompts — tracked as [#6](https://github.com/weklund/mlx-inference-workbench/issues/6)
+- [ ] Document dataset v1 in datasets/README.md — with #6
 
 ### M5 Max Hardware Verification (HARD GATE for roofline)
 - [ ] Find Apple's published M5 Max specs (memory bandwidth, GPU cores, TFLOPS)
