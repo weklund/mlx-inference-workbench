@@ -189,7 +189,15 @@ class MtplxEngine(Engine):
                 f"MTPLX generate_mtpk output.text must be str; got {type(text).__name__}"
             )
         tokens = getattr(output, "tokens", None) or []
-        total_tokens = len(tokens) if tokens else self._count_tokens(tokenizer, text)
+        if tokens:
+            total_tokens = len(tokens)
+        else:
+            try:
+                total_tokens = self._count_tokens(tokenizer, text)
+            except Exception as e:
+                raise GenerationError(
+                    f"Failed to count output tokens from text (no tokens list): {e}"
+                ) from e
 
         stats = getattr(output, "stats", None)
         acc_rate, acc_len = (
@@ -239,15 +247,17 @@ class MtplxEngine(Engine):
 
     @staticmethod
     def _count_tokens(tokenizer: Any, text: str) -> int:
+        """Count tokens via tokenizer.encode only (no word-split fabrication).
+
+        Raises:
+            Exception: Propagates tokenizer.encode failures to the caller.
+        """
         if not text:
             return 0
-        try:
-            ids = tokenizer.encode(text)
-            if hasattr(ids, "tolist"):
-                ids = ids.tolist()
-            return max(1, len(ids))
-        except Exception:
-            return max(1, len(text.split()))
+        ids = tokenizer.encode(text)
+        if hasattr(ids, "tolist"):
+            ids = ids.tolist()
+        return max(1, len(ids))
 
     @staticmethod
     def _seed_rng(seed: int) -> None:

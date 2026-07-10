@@ -125,6 +125,56 @@ def test_generate_contract_e2e_and_acceptance(monkeypatch):
     assert captured["prompt_ids"] == [10, 11, 12]
 
 
+def test_generate_token_count_failure_is_generation_error(monkeypatch):
+    """Empty tokens list + encode failure must not invent word-split counts."""
+    import sys
+
+    class _FakeMx:
+        class random:
+            @staticmethod
+            def seed(_s: int) -> None:
+                return None
+
+        @staticmethod
+        def get_peak_memory() -> int:
+            return 0
+
+        @staticmethod
+        def reset_peak_memory() -> None:
+            return None
+
+    monkeypatch.setitem(sys.modules, "mlx.core", _FakeMx)
+    monkeypatch.setitem(sys.modules, "mlx", SimpleNamespace(core=_FakeMx))
+
+    def selective_encode(text: str):
+        # Prompt path succeeds; output recount fails (empty tokens list).
+        if text == "p":
+            return [1]
+        raise RuntimeError("encode exploded")
+
+    def fake_generate_mtpk(*_a, **_k):
+        return SimpleNamespace(
+            text="hello world from model",
+            tokens=[],
+            stats=SimpleNamespace(drafted_tokens=0, accepted_drafts=0, verify_calls=0),
+        )
+
+    def make_sampler(**kw):
+        return SimpleNamespace(**kw)
+
+    gen_mod = SimpleNamespace(SamplerConfig=make_sampler, generate_mtpk=fake_generate_mtpk)
+    monkeypatch.setitem(sys.modules, "mtplx.generation", gen_mod)
+    monkeypatch.setitem(sys.modules, "mtplx", SimpleNamespace(generation=gen_mod))
+
+    eng = MtplxEngine()
+    eng._runtime = SimpleNamespace(tokenizer=SimpleNamespace(encode=selective_encode))
+    eng._config = ModelConfig(name="m", quantization="q", backend="mtplx")
+
+    with pytest.raises(GenerationError, match="Failed to count output tokens") as ei:
+        eng.generate("p", GenParams(max_tokens=4, seed=1))
+    assert isinstance(ei.value.__cause__, RuntimeError)
+
+
 def test_generate_rejects_output_without_text(monkeypatch):
     """API drift: missing .text must not become str(output) comparison garbage."""
     import sys
