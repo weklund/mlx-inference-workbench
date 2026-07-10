@@ -13,7 +13,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 |------:|-------|------|
 | 0 | [#2](https://github.com/weklund/mlx-inference-workbench/issues/2) Phase 0 MTPLX familiarization | Done |
 | 1 | [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) Phase 0.5 Thermal gate | HARD GATE |
-| 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | Setup |
+| 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | **Done** (MVP; see issue for residuals) |
 | 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | Setup |
 | 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup |
 | 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate |
@@ -68,86 +68,85 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ## Phase 1: MVP (Benchmarking Harness)
 
+> **Status (2026-07-10):** MVP harness **shipped** on `main` (audit #24).  
+> Evidence: PRs #16, #18, #19, #25–#27, #29. Epic issue [#5](https://github.com/weklund/mlx-inference-workbench/issues/5).  
+> Not part of harness MVP: official baselines (#3 thermal report, #6 dataset, #7 mlx-lm run, #8 roofline).
+
 ### Core Infrastructure
-- [ ] Implement Orchestrator (Python CLI with Click/Typer)
-  - [ ] `bench run <config.yaml>` command
-  - [ ] `bench compare <run_a> <run_b>` command
-  - [ ] `bench list` command
-  - [ ] `bench validate <run_id>` command
-  - [ ] `bench report <run_id>` command
-  - [ ] `bench rebuild-index` command (rebuild MLflow from Parquet)
-- [ ] Implement Hardware Probe
-  - [ ] Capture chip model, GPU cores, memory (sysctl, system_profiler)
-  - [ ] Capture OS version, library versions, git SHA
-  - [ ] Capture ambient temperature (if sensor available)
-  - [ ] Capture baseline thermal state
-- [ ] Implement Prompt Manager
-  - [ ] Load JSONL datasets
-  - [ ] SHA-256 verification against manifest
-  - [ ] Abort on hash mismatch
-- [ ] Implement Thermal Monitor
-  - [ ] Parse `powermetrics` output for chip temperature
-  - [ ] Detect throttling (primary: powermetrics, fallback: timing anomaly >2× median)
-  - [ ] Flag tainted iterations with `GenerationStatus.THERMAL_TAINTED`
-  - [ ] Log thermal stability metric (intra-run variance)
-  - [ ] Handle unavailable powermetrics (fallback mode with degraded flag)
-- [ ] Implement Metrics Computer
-  - [ ] p50, p90, p95, p99 percentiles
-  - [ ] Mean, trimmed mean (drop top 1%), std dev
-  - [ ] Coefficient of variation + flag if >5%
-  - [ ] Bandwidth utilization % (after hardware specs verified)
-  - [ ] Power consumption (watts) and energy per token (joules/token)
-  - [ ] Acceptance rate + mean accepted length (speculative backends)
-- [ ] Implement Comparability Gate
-  - [ ] Check: prompt dataset hash match
-  - [ ] Check: hardware profile match
-  - [ ] Check: metrics schema version match
-  - [ ] Check: thermal stability similarity
-  - [ ] Check: ambient temperature within ±5°C (if logged)
-  - [ ] Check: OS/library versions compatible
-  - [ ] Check: neither run had degraded thermal monitoring
-  - [ ] Block with specific violation list OR pass to comparator
-- [ ] Implement Statistical Comparator
-  - [ ] Shapiro-Wilk normality test
-  - [ ] Welch's t-test (normal distributions)
-  - [ ] Mann-Whitney U (non-normal distributions)
-  - [ ] Effect size (Cohen's d)
-  - [ ] 95% confidence interval on difference
-  - [ ] Verdict with practical significance annotation
-- [ ] Implement MLflow Reporter
-  - [ ] Log params (hardware, config, prompt hash, library versions, schema version)
-  - [ ] Log metrics (all computed statistics)
-  - [ ] Log artifacts (raw Parquet, distribution plots, thermal log, summary JSON)
-  - [ ] Tag runs (stable/unstable, quality level, backend, model, quantization)
-- [ ] Implement Parquet data store (write-first, atomic)
-  - [ ] Per-token timestamps for all iterations
-  - [ ] Per-iteration metadata (thermal state, memory, status)
-  - [ ] Schema versioned
+- [x] Implement Orchestrator (Python CLI with Click)
+  - [x] `bench run <config.yaml>` command
+  - [x] `bench compare <run_a> <run_b>` command
+  - [x] `bench list` command
+  - [ ] `bench validate <run_id>` command (stub only — residual)
+  - [x] `bench report <run_id>` command
+  - [ ] `bench rebuild-index` command (rebuild MLflow from Parquet — residual)
+- [x] Implement Hardware Probe
+  - [x] Capture chip model, memory (sysctl / fingerprint)
+  - [x] Capture OS version, library versions, git SHA
+  - [ ] Capture ambient temperature (if sensor available) — residual / optional
+  - [x] Capture baseline thermal state (via ThermalSensor)
+- [x] Implement Prompt Manager
+  - [x] Load JSONL datasets
+  - [x] SHA-256 verification against manifest
+  - [x] Abort on hash mismatch
+  - [x] Optional `reference` field for correctness gate (#19)
+- [x] Implement Thermal Monitor
+  - [x] Parse `powermetrics` output (power / pressure when available)
+  - [x] Detect throttling (primary: pressure; fallback: timing anomaly >2× median)
+  - [x] Flag tainted iterations with `GenerationStatus.THERMAL_TAINTED`
+  - [x] `note_duration` on protocol (#25); degraded history heuristic
+  - [x] Handle unavailable powermetrics (degraded / off modes)
+- [x] Implement Metrics Computer
+  - [x] p50, p90, p95, p99 percentiles
+  - [x] Mean, trimmed mean (drop top 1%), std dev
+  - [x] Coefficient of variation + flag if > threshold (default 5%)
+  - [ ] Bandwidth utilization % (after #8 hardware specs) — residual
+  - [ ] Power consumption / energy per token as first-class metrics — residual (fields exist, not fully wired)
+  - [x] Acceptance rate fields optional/null for non-speculative
+  - [x] E2e-only non-stream path does not invent TTFT/decode/SITL (#19)
+- [x] Implement Comparability Gate
+  - [x] Check: prompt dataset hash match
+  - [x] Check: hardware profile match
+  - [x] Check: metrics schema version match
+  - [x] Check: thermal monitoring mode comparability
+  - [ ] Check: ambient temperature within ±5°C (if logged) — residual
+  - [x] Check: key metadata equality (schema, engine interface, etc.)
+  - [x] Block with specific violation list OR pass to comparator
+- [x] Implement Statistical Comparator
+  - [x] Normality-aware path (Welch / Mann-Whitney)
+  - [x] Effect size (Cohen's d)
+  - [x] 95% confidence interval on difference
+  - [x] Verdict with fail-closed allowlist (`DISTRIBUTION_METRIC_NAMES`, #27)
+- [x] Implement MLflow Reporter (optional via `enable_mlflow`)
+  - [x] Log params / metrics / tags when enabled
+  - [ ] Full artifact suite (plots, thermal log) — residual / partial
+  - [x] Tag runs (stable/unstable, quality, backend, …)
+- [x] Implement run store (write-first, atomic summary)
+  - [x] iterations JSONL + Parquet + summary.json
+  - [x] Per-iteration metadata (thermal, memory, status)
+  - [x] Schema versioned (`METRICS_SCHEMA_VERSION`, etc.)
+- [x] Hygiene: strict config bools (#26), coverage gate + Makefile (#29)
 
 ### Engine Interface + First Backend
-- [ ] Define Engine ABC (load_model, warmup, generate, supports_speculative, get_memory_usage, validate_correctness)
-- [ ] Define GenerationResult dataclass with GenerationStatus enum
-- [ ] Define EngineLoadError, GenerationError exceptions
-- [ ] Implement correctness gate (tiered: bitwise at temp=0, KL-divergence fallback)
-- [ ] Implement mlx-lm engine plugin (v1)
-  - [ ] load_model via mlx-lm API
-  - [ ] warmup (N iterations discarded)
-  - [ ] generate with per-token timestamps
-  - [ ] validate_correctness at temp=0/fixed seed
-  - [ ] get_memory_usage
-- [ ] Per-iteration timeout (`per_iteration_timeout_sec`) with kill on timeout
+- [x] Define Engine ABC + GenParams / timed generate (orchestrator-owned timeout, #18)
+- [x] Define GenerationResult dataclass with GenerationStatus enum
+- [x] Stub engine for CI / smoke
+- [x] Engine load / generation error paths (as used by registry + orchestrator)
+- [x] Correctness scoring hook + dataset `reference` / `require_correctness` (#19)
+  - [ ] Tiered KL-divergence fallback — residual / future
+- [x] mlx-lm engine plugin (load + stream/e2e generate; first **official** baseline still [#7](https://github.com/weklund/mlx-inference-workbench/issues/7))
+- [x] Per-iteration timeout (`per_iteration_timeout_sec`) via orchestrator timed_generate
 
 ### Experiment Config
-- [ ] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
-- [ ] Validate configs against declared schema version
-- [ ] Create first hardware profile: `m5_max_128gb.yaml`
-- [ ] Create default benchmark config
+- [x] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
+- [x] Validate configs against declared schema version + strict bools (#26)
+- [x] Create first hardware profile: `m5_max_128gb.yaml`
+- [x] Create default/smoke benchmark config (`configs/experiments/smoke_minimal.yaml`)
 
 ### Prompt Dataset
-- [ ] Curate ~20 agentic coding prompts (tool calls, multi-turn reasoning, code generation)
-- [ ] Save as JSONL with id, category, prompt, expected_tokens_approx
-- [ ] Generate SHA-256 checksum file
-- [ ] Document dataset v1 in datasets/README.md
+- [x] Smoke dataset + SHA-256 (`datasets/smoke_v1.jsonl`) for harness CI
+- [ ] Curate ~20 agentic coding prompts — tracked as [#6](https://github.com/weklund/mlx-inference-workbench/issues/6)
+- [ ] Document dataset v1 in datasets/README.md — with #6
 
 ### M5 Max Hardware Verification (HARD GATE for roofline)
 - [ ] Find Apple's published M5 Max specs (memory bandwidth, GPU cores, TFLOPS)
