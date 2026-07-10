@@ -17,9 +17,6 @@ class _ScriptedEngine(Engine):
     def load_model(self, config: ModelConfig) -> None:
         return None
 
-    def warmup(self, prompts: list[str], n: int, params: GenParams) -> None:
-        return None
-
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         return self._result
 

@@ -1,4 +1,4 @@
-"""Wall-clock timeout around engine.generate (shared by orchestrator and engines)."""
+"""Wall-clock timeout around engine.generate (orchestrator policy)."""
 
 from __future__ import annotations
 
@@ -22,17 +22,17 @@ def _timeout_result(timeout: float) -> GenerationResult:
     )
 
 
-def generate_with_timeout(
+def timed_generate(
     engine: Engine,
     prompt: str,
     params: GenParams,
 ) -> GenerationResult:
-    """Enforce wall-clock timeout around engine.generate (HLD: TIMEOUT, not hang).
+    """Bounded generate for correctness, warmup, and measure (HLD: TIMEOUT, not hang).
 
     Runs generate on a **daemon** thread so a hung worker cannot block process /
-    CLI exit after we return TIMEOUT. (Threads cannot be force-killed; the worker
-    may still hold resources until the process exits, but it will not keep the
-    interpreter alive.)
+    CLI exit after we return TIMEOUT. Threads cannot be force-killed; the worker
+    may still hold resources until process exit, but it will not keep the
+    interpreter alive.
     """
     timeout = params.timeout_sec
     if timeout is None or timeout <= 0:
@@ -57,9 +57,12 @@ def generate_with_timeout(
     try:
         kind, payload = out.get(timeout=timeout)
     except Empty:
-        # Worker is daemon: abandon it; do not join (would re-block on hung generate).
         return _timeout_result(float(timeout))
 
     if kind == "err":
         raise payload  # type: ignore[misc]
     return payload  # type: ignore[return-value]
+
+
+# Back-compat alias for older imports / tests
+generate_with_timeout = timed_generate

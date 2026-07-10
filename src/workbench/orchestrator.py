@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from workbench.config import ExperimentConfig
-from workbench.engines.base import Engine, GenParams
+from workbench.engines.base import Engine, GenParams, iter_warmup_prompts
 from workbench.engines.registry import create_engine
-from workbench.engines.timeout import generate_with_timeout
+from workbench.engines.timeout import timed_generate
 from workbench.hardware import capture_fingerprint, capture_git_sha, library_versions
 from workbench.metrics import summarize_iterations
 from workbench.models import (
@@ -28,12 +28,34 @@ class OrchestratorError(Exception):
     pass
 
 
+def _run_correctness_gate(
+    engine: Engine,
+    prompt: str,
+    params: GenParams,
+    *,
+    reference: str,
+) -> None:
+    """Fail closed when a reference is provided. Skip when reference is blank (Phase 1)."""
+    if not (reference or "").strip():
+        return
+    result = timed_generate(engine, prompt, params)
+    if not engine.score_correctness(result, reference=reference, tolerance=0.0):
+        raise OrchestratorError("Correctness gate failed — aborting before measurement")
+
+
 def run_experiment(
     config: ExperimentConfig,
     *,
     repo_root: Path | None = None,
     engine: Engine | None = None,
+    correctness_reference: str = "",
 ) -> RunRecord:
+    """Run a timed benchmark.
+
+    correctness_reference: when non-empty, run timed generate + score_correctness
+    and abort on failure. Empty (default) skips the gate until the harness has
+    real dataset references — avoids a fake gate with reference=\"\".
+    """
     root = (repo_root or Path.cwd()).resolve()
     store = RunStore(
         resolve_path(config.results_dir, root=root),
@@ -70,13 +92,11 @@ def run_experiment(
         timeout_sec=float(config.benchmark.per_iteration_timeout_sec),
     )
 
-    # Correctness gate (soft for mlx-lm free-form; stub always passes)
-    ok = eng.validate_correctness(prompts[0], reference="", tolerance=0.0)
-    if not ok:
-        raise OrchestratorError("Correctness gate failed — aborting before measurement")
+    _run_correctness_gate(eng, prompts[0], params, reference=correctness_reference)
 
-    # Warmup
-    eng.warmup(prompts, config.benchmark.warmup_iterations, params)
+    # Warmup (same timed_generate as measure)
+    for p in iter_warmup_prompts(prompts, config.benchmark.warmup_iterations):
+        timed_generate(eng, p, params)
 
     # Measure
     iterations: list[GenerationResult] = []
@@ -85,8 +105,7 @@ def run_experiment(
         prompt = prompts[i % len(prompts)]
         pre = thermal.read()
         try:
-            result = generate_with_timeout(eng, prompt, params)
-            # Attach orchestrator thermal reading when engine succeeded
+            result = timed_generate(eng, prompt, params)
             if result.status == GenerationStatus.SUCCESS:
                 result.thermal_state = pre
             if result.status == GenerationStatus.SUCCESS and thermal.is_throttling(pre):
@@ -119,8 +138,6 @@ def run_experiment(
         cov_threshold=config.metrics.flag_cov_threshold,
     )
 
-    # Always persist iterations for diagnosis; raise if nothing usable for stats.
-    # Timeout-only runs still write when we have a store path — caller may catch.
     metadata = RunMetadata(
         run_id=run_id,
         experiment_name=config.name,
