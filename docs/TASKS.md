@@ -15,7 +15,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 | 1 | [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) Phase 0.5 Thermal gate | HARD GATE |
 | 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | **Done** (MVP; see issue for residuals) |
 | 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | Setup |
-| 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup |
+| 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup (engine shipped; provisional baseline config; official numbers wait on #3) |
 | 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate |
 | 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Setup |
 | 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup |
@@ -134,14 +134,18 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Engine load / generation error paths (as used by registry + orchestrator)
 - [x] Correctness scoring hook + dataset `reference` / `require_correctness` (#19)
   - [ ] Tiered KL-divergence fallback — residual / future
-- [x] mlx-lm engine plugin (load + stream/e2e generate; first **official** baseline still [#7](https://github.com/weklund/mlx-inference-workbench/issues/7))
+- [x] mlx-lm engine plugin (load + stream/e2e generate; seed + MLX peak memory)
 - [x] Per-iteration timeout (`per_iteration_timeout_sec`) via orchestrator timed_generate
+- [x] Provisional baseline config: `configs/experiments/baseline_mlx_lm.yaml` + tiny smoke
+- [x] First provisional measured run `9f8c7f967277` + fill `experiments/01_baseline_m5max/README.md` results table
+- [ ] Official baseline after thermal gate [#3](https://github.com/weklund/mlx-inference-workbench/issues/3)
 
 ### Experiment Config
 - [x] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
 - [x] Validate configs against declared schema version + strict bools (#26)
 - [x] Create first hardware profile: `m5_max_128gb.yaml`
 - [x] Create default/smoke benchmark config (`configs/experiments/smoke_minimal.yaml`)
+- [x] mlx-lm tiny smoke + provisional baseline YAMLs (#7)
 
 ### Prompt Dataset
 - [x] Smoke dataset + SHA-256 (`datasets/smoke_v1.jsonl`) for harness CI
@@ -161,9 +165,9 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [ ] Unit tests: Comparability Gate (valid pairs pass, invalid pairs block)
 - [ ] Unit tests: Statistical Comparator (known distributions → correct p-values)
 - [ ] Unit tests: Prompt Manager (SHA-256 catches tampering)
-- [ ] Integration test: mlx-lm engine contract (implements full interface)
+- [x] Integration test: mlx-lm engine contract (implements full interface; mocked weights)
 - [ ] Integration test: MLflow round-trip (log + retrieve)
-- [ ] E2E test: minimal experiment (small model, 2 warmup, 3 iterations)
+- [ ] E2E test: minimal experiment (small model, 2 warmup, 3 iterations) — use `make smoke-mlx-tiny` (gpu/local)
 - [ ] E2E test: comparison of two identical runs → "no significant difference"
 - [ ] E2E test: Comparability Gate blocks incompatible runs
 

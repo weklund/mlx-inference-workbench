@@ -45,17 +45,66 @@ def _git_sha(repo_root: Path | None = None) -> str | None:
     return None
 
 
+def _package_version(import_name: str, *, dist_names: tuple[str, ...] = ()) -> str:
+    """Resolve a library version for run metadata (report dimension, not a pin).
+
+    Prefer importlib.metadata (works when ``__version__`` is missing, e.g. top-level
+    ``mlx``), then module ``__version__``, then nested ``mlx.core`` for MLX.
+    """
+    import importlib.metadata as importlib_metadata
+
+    candidates = dist_names or (import_name.replace("_", "-"), import_name)
+    for dist in candidates:
+        try:
+            return importlib_metadata.version(dist)
+        except importlib_metadata.PackageNotFoundError:
+            continue
+
+    try:
+        mod = __import__(import_name)
+    except ImportError:
+        return "not_installed"
+
+    ver = getattr(mod, "__version__", None)
+    if ver:
+        return str(ver)
+
+    # mlx: version lives on mlx.core, not the package root
+    if import_name == "mlx":
+        try:
+            import mlx.core as mx
+
+            nested = getattr(mx, "__version__", None)
+            if nested:
+                return str(nested)
+        except ImportError:
+            pass
+
+    return "unknown"
+
+
 def library_versions() -> dict[str, str]:
+    """Capture interpreter + key deps as a free report dimension.
+
+    Stored on every run when ``reproducibility.record_env_versions`` is true.
+    Not enforced by the comparability gate — same backend across library versions
+    is a valid experiment factor (meta-analysis over upgrades).
+    """
     versions: dict[str, str] = {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
     }
-    for mod_name in ("numpy", "scipy", "yaml", "mlflow", "mlx", "mlx_lm"):
-        try:
-            mod = __import__(mod_name if mod_name != "yaml" else "yaml")
-            versions[mod_name] = getattr(mod, "__version__", "unknown")
-        except ImportError:
-            versions[mod_name] = "not_installed"
+    # import name → optional PyPI dist name overrides
+    packages: tuple[tuple[str, tuple[str, ...]], ...] = (
+        ("numpy", ()),
+        ("scipy", ()),
+        ("yaml", ("PyYAML", "pyyaml", "yaml")),
+        ("mlflow", ()),
+        ("mlx", ("mlx",)),
+        ("mlx_lm", ("mlx-lm", "mlx_lm")),
+    )
+    for import_name, dist_names in packages:
+        versions[import_name] = _package_version(import_name, dist_names=dist_names)
     return versions
 
 
