@@ -1,0 +1,43 @@
+schema_version: "1.0"
+
+experiment:
+  name: "provisional-baseline-mlx-lm-qwen3-8b-4bit"
+  description: >
+    Provisional Phase 1 mlx-lm baseline on agentic_coding_v1 (capped prompts).
+    Not official until thermal gate #3 passes — see experiments/01_baseline_m5max/README.md.
+    Raw completion prompts (no chat template). temp=0, seed=42.
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "qwen3-8b"
+  model_id: "mlx-community/Qwen3-8B-4bit"
+  quantization: "4bit"
+  backend: "mlx-lm"
+  max_tokens: 128
+
+benchmark:
+  warmup_iterations: 2
+  timed_iterations: 5
+  per_iteration_timeout_sec: 300
+  prompt_dataset: "datasets/agentic_coding_v1.jsonl"
+  prompt_checksum: "datasets/agentic_coding_v1.sha256"
+  cooldown_between_runs_sec: 30
+  monitor_thermal: true
+  abort_if_throttling: true
+  # First provisional run: cap for time; remove max_prompts for full 24-prompt sweep.
+  max_prompts: 8
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: true

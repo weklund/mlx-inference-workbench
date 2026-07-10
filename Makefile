@@ -10,6 +10,8 @@ PYTEST_MARK_CI := not gpu and not slow
 COV_JSON := coverage.json
 SMOKE_CONFIG := configs/experiments/smoke_minimal.yaml
 AGENTIC_STUB_CONFIG := configs/experiments/agentic_coding_v1_stub.yaml
+SMOKE_MLX_TINY_CONFIG := configs/experiments/smoke_mlx_lm_tiny.yaml
+BASELINE_MLX_CONFIG := configs/experiments/baseline_mlx_lm.yaml
 
 # Thermal (override: make thermal-run SESSION=morning DAY=2 RUNS=5)
 SESSION ?=
@@ -17,7 +19,8 @@ DAY ?=
 RUNS ?= 5
 
 .PHONY: help sync sync-update lint fmt test test-unit test-integration \
-	coverage ci smoke smoke-agentic bench-list bench-compare bench-report \
+	coverage ci smoke smoke-agentic smoke-mlx-tiny baseline-mlx-lm \
+	bench-list bench-compare bench-report \
 	thermal-run thermal-analyze thermal-analyze-protocol clean
 
 help: ## Show available targets
@@ -72,6 +75,12 @@ smoke: ## Run stub smoke experiment end-to-end
 
 smoke-agentic: ## Stub run pinned to agentic_coding_v1 dataset
 	$(UV) run bench run $(AGENTIC_STUB_CONFIG)
+
+smoke-mlx-tiny: ## Real mlx-lm smoke (tiny Qwen3 0.6B-4bit; requires Metal + weights)
+	$(UV) run bench run $(SMOKE_MLX_TINY_CONFIG)
+
+baseline-mlx-lm: ## Provisional mlx-lm baseline (Qwen3-8B-4bit + agentic_coding_v1; thermal on)
+	$(UV) run bench run $(BASELINE_MLX_CONFIG)
 
 bench-list: ## List stored benchmark runs
 	$(UV) run bench list

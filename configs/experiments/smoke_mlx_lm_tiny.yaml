@@ -1,0 +1,41 @@
+schema_version: "1.0"
+
+experiment:
+  name: "smoke-mlx-lm-tiny"
+  description: >
+    Fast local mlx-lm smoke (tiny 4-bit Qwen3). Not an official baseline.
+    Use for engine bring-up and harness checks with real Metal weights.
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "qwen3-0.6b"
+  model_id: "mlx-community/Qwen3-0.6B-4bit"
+  quantization: "4bit"
+  backend: "mlx-lm"
+  max_tokens: 64
+
+benchmark:
+  warmup_iterations: 2
+  timed_iterations: 3
+  per_iteration_timeout_sec: 120
+  prompt_dataset: "datasets/smoke_v1.jsonl"
+  prompt_checksum: "datasets/smoke_v1.sha256"
+  cooldown_between_runs_sec: 0
+  monitor_thermal: false
+  abort_if_throttling: false
+  max_prompts: 2
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: false
