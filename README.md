@@ -12,53 +12,26 @@ Personal workbench for optimizing LLM text inference on Apple Silicon, with a fo
 
 ## Philosophy
 
-This repo follows a **phased, spike-driven** approach:
+Spike-driven measurement discipline (not a delivery tracker):
 
-1. **Familiarize** — Get deep into MTPLX's custom Metal kernels and MTP speculative decoding
-2. **Validate** — Prove thermal reproducibility before any official baselines
-3. **Baseline** — Establish strong, reproducible measurements on M5 Max
-4. **Understand** — Profile at kernel level to identify real bottlenecks
-5. **Optimize** — Build and measure improvements one spike at a time
+1. **Familiarize** → **Validate** (thermal gate before official numbers) → **Baseline**
+2. **Understand** bottlenecks → **Optimize** one spike at a time
+3. Same harness for every claim; report distributions + statistical significance
 
-All experiments must be measurable using the same tools in `benchmarks/`. Every claim requires statistical significance.
+## Roadmap (milestones)
 
-## Phased Roadmap
+Delivery is tracked in **GitHub milestones** (source of truth for issue membership and DoD).  
+HLD “Phase 0/1/2…” language is historical design structure; map it to milestones in [docs/TASKS.md](docs/TASKS.md).
 
-### Phase 0: MTPLX Familiarization
-- Understand the MTP draft → verify → accept/reject flow
-- Map the 4 custom Metal kernels (verify_qmv, GDN, innovation-tape, capture/replay)
-- Understand how they register as MLX primitives
+| MS | Focus | Status (approx.) |
+|----|--------|------------------|
+| **[M1: Lab foundation](https://github.com/weklund/mlx-inference-workbench/milestone/1)** | Harness, CI, mlx-lm, ceilings, thermal HARD GATE, official baseline | Harness + ceilings + provisional baseline **done**; open: [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) thermal, [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) official baseline |
+| **[M2: Multi-engine comparison](https://github.com/weklund/mlx-inference-workbench/milestone/2)** | MTPLX + llama.cpp plugins; EXP wave (prefix cache, free draft, quant, …) | Next product wave after M1 close-out |
+| **[M3: Custom Metal / Rust kernels](https://github.com/weklund/mlx-inference-workbench/milestone/3)** | Kernel maturity, llvm-cov, custom Metal beyond STREAM | Seeded by `metal_stream`; [#34](https://github.com/weklund/mlx-inference-workbench/issues/34) |
 
-### Phase 0.5: Thermal Reproducibility Validation (HARD GATE)
-- 20 runs across 2 days (morning/afternoon/evening)
-- Must achieve CoV < 5% on decode tok/s before proceeding
-- Iterate on methodology until thermal discipline is validated
+Later optimization themes (skew-aware paths, adaptive controllers, thermal closed-loop, agent rollback) stay in HLD / TASKS Phase 3+ — not separate README phases.
 
-### Phase 1: MVP Benchmarking Harness + Baselines
-- Build the harness: orchestrator, thermal monitor, metrics computer, comparability gate
-- First backend: mlx-lm end-to-end
-- Verify M5 Max hardware specs (published + empirical STREAM/peak-FLOPS)
-- Expand to: MTPLX, llama.cpp, BaseRT, mlx-vlm (text mode)
-- Models: Qwen3/3.6 27B-class, Llama 3.x, others
-- Workloads: agentic coding flows (tool calls, multi-turn reasoning, code generation)
-
-### Phase 2: Deep Kernel Understanding
-- Replicate simple versions of small-M quantized ops via `mx.fast.metal_kernel()`
-- Profile at kernel level (Xcode GPU capture / Instruments)
-- Document why kernels win on Apple Silicon's unified memory architecture
-
-### Phase 3: Rust Kernel Layer
-- Initialize Rust workspace (Criterion.rs + metal-rs + PyO3)
-- Write reference implementations, then custom Metal shaders
-- Roofline analysis against verified M5 Max ceilings
-
-### Phase 3+: Optimization Spikes (Priority Order)
-1. **Skew-aware / hot-path specialization** — Entropy/confidence-aware fast paths in kernels (est. 15-35%)
-2. **Adaptive self-tuning controller** — Dynamic strategy selection based on runtime stats (est. 10-30%)
-3. **Value/outcome prediction** — Predict acceptance length for better speculative decisions (est. 20-50%)
-4. **Predictive thermal management** — Modulate aggressiveness based on thermal headroom
-5. **Precise agent rollback** — Extend innovation-tape to tool/side-effect state
-6. **Durable recovery (WAL-style)** — Persistent logging for long-running agent sessions
+Epic: [#4](https://github.com/weklund/mlx-inference-workbench/issues/4).
 
 ## Intellectual Foundations
 
@@ -165,10 +138,9 @@ All metrics reported as distributions: p50, p90, p95, p99, trimmed mean, std dev
 
 ## Design Documents
 
-- [HLD: Benchmarking Harness](docs/HLD.md) — Full architecture, requirements, and design decisions
-- [Task Breakdown](docs/TASKS.md) — Milestones M1–M3 + HLD phase checkboxes
-- [M1: Lab foundation](https://github.com/weklund/mlx-inference-workbench/milestone/1) · [M2: Multi-engine comparison](https://github.com/weklund/mlx-inference-workbench/milestone/2) · [M3: Custom Metal / Rust kernels](https://github.com/weklund/mlx-inference-workbench/milestone/3)
-- Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4) — Program map (HLD in-scope only)
+- [HLD: Benchmarking Harness](docs/HLD.md) — Architecture, requirements, design decisions (incl. original HLD phase narrative)
+- [Task Breakdown](docs/TASKS.md) — Milestone ↔ issue map + residual checkboxes
+- Milestones: [M1](https://github.com/weklund/mlx-inference-workbench/milestone/1) · [M2](https://github.com/weklund/mlx-inference-workbench/milestone/2) · [M3](https://github.com/weklund/mlx-inference-workbench/milestone/3) · Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4)
 
 ## Citing
 
