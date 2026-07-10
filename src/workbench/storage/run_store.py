@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from workbench.models import MetricSummary, RunMetadata, RunRecord
+from workbench.models import DISTRIBUTION_METRIC_NAMES, MetricSummary, RunMetadata, RunRecord
 
 
 class RunStore:
@@ -147,14 +147,7 @@ class RunStore:
 
 def _metric_values_payload(metrics: MetricSummary) -> dict[str, list[float]]:
     out: dict[str, list[float]] = {}
-    for name in (
-        "ttft_ms",
-        "decode_tok_s",
-        "sitl_ms",
-        "e2e_ms",
-        "memory_peak_bytes",
-        "acceptance_rate",
-    ):
+    for name in DISTRIBUTION_METRIC_NAMES:
         dist = getattr(metrics, name)
         if dist is not None and dist.values:
             out[name] = list(dist.values)
@@ -221,12 +214,7 @@ def _metrics_from_dict(d: dict[str, Any], values: dict[str, list[float]]) -> Met
         )
 
     return MetricSummary(
-        ttft_ms=rebuild("ttft_ms"),
-        decode_tok_s=rebuild("decode_tok_s"),
-        sitl_ms=rebuild("sitl_ms"),
-        e2e_ms=rebuild("e2e_ms"),
-        memory_peak_bytes=rebuild("memory_peak_bytes"),
-        acceptance_rate=rebuild("acceptance_rate"),
+        **{name: rebuild(name) for name in DISTRIBUTION_METRIC_NAMES},
         valid_iterations=int(d["valid_iterations"]),
         total_iterations=int(d["total_iterations"]),
         tainted_iterations=int(d["tainted_iterations"]),

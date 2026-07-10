@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from workbench.models import DISTRIBUTION_METRIC_NAMES
 from workbench.paths import ENV_PROJECT_ROOT, resolve_project_root, resolve_results_dir
 
 console = Console()
@@ -155,7 +156,13 @@ def report_cmd(ctx: click.Context, run_id: str, results_dir: Path | None) -> Non
 @main.command("compare")
 @click.argument("run_a")
 @click.argument("run_b")
-@click.option("--metric", default="decode_tok_s", show_default=True)
+@click.option(
+    "--metric",
+    default="decode_tok_s",
+    show_default=True,
+    type=click.Choice(DISTRIBUTION_METRIC_NAMES, case_sensitive=True),
+    help="Distribution metric field on MetricSummary to compare.",
+)
 @click.option("--results-dir", type=click.Path(path_type=Path), default=None)
 @click.pass_context
 def compare_cmd(
