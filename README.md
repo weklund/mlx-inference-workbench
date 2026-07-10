@@ -104,13 +104,20 @@ uv sync --extra mtplx            # include MTPLX
 ### 2. Running Benchmarks
 
 ```bash
-bench run configs/experiments/baseline_mlx_lm.yaml
-bench compare <run_a> <run_b>
-bench list
-bench report <run_id>
+# From a checkout (project root is discovered via pyproject.toml / configs+datasets)
+uv run bench run configs/experiments/smoke_minimal.yaml
+uv run bench list
+uv run bench compare <run_a> <run_b>
+uv run bench report <run_id>
+
+# Outside a checkout, or when installed: set an explicit data root
+export MLX_WORKBENCH_ROOT=/path/to/workbench-data   # contains configs/, datasets/, …
+# or: uv run bench --project-root /path/to/workbench-data run configs/experiments/smoke_minimal.yaml
 ```
 
-Results are stored as Parquet (ground truth) and indexed in MLflow (queryable via `mlflow ui`).
+Relative dataset/results paths in YAML resolve against the **project root** (env/`--project-root`/cwd discovery), never against the package install path (`site-packages`).
+
+Results default to `<project-root>/benchmarks/results` (Parquet/JSON ground truth; optional MLflow index).
 
 ### 3. Adding a New Experiment
 
@@ -143,6 +150,7 @@ All metrics reported as distributions: p50, p90, p95, p99, trimmed mean, std dev
 
 - [HLD: Benchmarking Harness](docs/HLD.md) — Full architecture, requirements, and design decisions
 - [Task Breakdown](docs/TASKS.md) — Implementation plan with phases and checkboxes
+- [Milestone: Local inference gaps (HLD-scoped)](https://github.com/weklund/mlx-inference-workbench/milestone/1) — Setup + experiment issues with DoD/smoke tests (epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4))
 
 ## Citing
 

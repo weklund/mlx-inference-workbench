@@ -36,15 +36,6 @@ bench = "benchmarks.cli:main"
 line-length = 100
 target-version = "py311"
 
-[tool.pytest.ini_options]
-markers = [
-    "gpu: requires Apple Silicon Metal GPU (self-hosted runner only)",
-    "slow: takes >60s, skipped in pre-merge CI",
-    "integration: cross-language or multi-component tests",
-    "nightly: only runs in nightly scheduled CI",
-    "weekly: only runs in weekly scheduled CI",
-]
-
 [dependency-groups]
 dev = [
     "pytest>=8.0",
@@ -54,7 +45,22 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["benchmarks", "src"]
+packages = ["src/workbench", "benchmarks"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/workbench" = "workbench"
+"benchmarks" = "benchmarks"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+    "gpu: requires Apple Silicon Metal GPU (self-hosted runner only)",
+    "slow: takes >60s, skipped in pre-merge CI",
+    "integration: cross-language or multi-component tests",
+    "nightly: only runs in nightly scheduled CI",
+    "weekly: only runs in weekly scheduled CI",
+]
 
 [build-system]
 requires = ["hatchling"]

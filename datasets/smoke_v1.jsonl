@@ -1,0 +1,3 @@
+{"id": "smoke_001", "category": "code_generation", "prompt": "Write a Python function that adds two integers and returns the sum.", "expected_tokens_approx": 64}
+{"id": "smoke_002", "category": "tool_call", "prompt": "Return a JSON object with keys name and value for a hello-world tool call.", "expected_tokens_approx": 64}
+{"id": "smoke_003", "category": "reasoning", "prompt": "Explain in one sentence what binary search does.", "expected_tokens_approx": 48}

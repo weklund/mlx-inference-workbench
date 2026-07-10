@@ -1,6 +1,29 @@
 # Task Breakdown — MLX Inference Workbench
 
-> Derived from [HLD.md](HLD.md) | Created: 2026-07-08
+> Derived from [HLD.md](HLD.md) | Created: 2026-07-08  
+> GitHub milestone: [Local inference gaps (HLD-scoped)](https://github.com/weklund/mlx-inference-workbench/milestone/1) · Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4)
+
+---
+
+## GitHub roadmap (gap map × HLD)
+
+Issues below are the **source of truth** for purpose, definition of done, and smoke tests. HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal images, training/distill, DSPy product work, multi-Mac TP/PP, cascade product routing) are **not** in this milestone.
+
+| Order | Issue | Role |
+|------:|-------|------|
+| 0 | [#2](https://github.com/weklund/mlx-inference-workbench/issues/2) Phase 0 MTPLX familiarization | Done |
+| 1 | [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) Phase 0.5 Thermal gate | HARD GATE |
+| 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | Setup |
+| 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | Setup |
+| 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup |
+| 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate |
+| 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Setup |
+| 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup |
+| 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10) EXP Prefix cache | Experiment |
+| 5 | [#11](https://github.com/weklund/mlx-inference-workbench/issues/11) EXP Free draft | Experiment |
+| 5 | [#12](https://github.com/weklund/mlx-inference-workbench/issues/12) EXP KV compression | Experiment |
+| 5 | [#13](https://github.com/weklund/mlx-inference-workbench/issues/13) EXP Quant matrix | Experiment |
+| 6 | [#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP Adaptive draft | Experiment |
 
 ---
 
