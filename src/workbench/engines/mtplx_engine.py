@@ -173,9 +173,21 @@ class MtplxEngine(Engine):
             raise GenerationError(str(e)) from e
         e2e_s = time.perf_counter() - start
 
-        text = getattr(output, "text", None)
+        if not hasattr(output, "text"):
+            raise GenerationError(
+                "MTPLX generate_mtpk output lacks required 'text' attribute; "
+                "refusing str(output) fallback to avoid invalid comparison data"
+            )
+        text = output.text
         if text is None:
-            text = str(output)
+            raise GenerationError(
+                "MTPLX generate_mtpk output.text is None; "
+                "refusing str(output) fallback to avoid invalid comparison data"
+            )
+        if not isinstance(text, str):
+            raise GenerationError(
+                f"MTPLX generate_mtpk output.text must be str; got {type(text).__name__}"
+            )
         tokens = getattr(output, "tokens", None) or []
         total_tokens = len(tokens) if tokens else self._count_tokens(tokenizer, text)
 
@@ -186,7 +198,7 @@ class MtplxEngine(Engine):
 
         return GenerationResult(
             status=GenerationStatus.SUCCESS,
-            output_text=text if isinstance(text, str) else str(text),
+            output_text=text,
             token_timestamps=[],
             ttft_ms=None,
             total_tokens=int(total_tokens),
