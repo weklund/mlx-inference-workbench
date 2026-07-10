@@ -32,7 +32,7 @@ We measure **single-user, single-stream** (one request at a time) text LLM infer
 | Programmatic generate/stream with honest timings | Continuous batching / multi-user serving as a *feature* |
 | Comparable runs only under the **comparability gate** (below) | OpenAI-compatible server product UX |
 | Optional speculative / cache metrics when measurable | Multimodal image workloads (text path only) |
-| | **Training / fine-tuning / distillation** (separate from inference engines) |
+| | **Training / fine-tuning** (HLD §7); distillation product work is **milestone-local** oos (not named in §7) |
 
 **Comparability (explicit — not “same setup” hand-waving).** Official cross-backend claims require matching metadata; **missing or mismatched fields are an explicit gate violation** (`workbench.comparability.check_comparable` / `check_runs_comparable`). Required equal fields today:
 
@@ -110,7 +110,7 @@ These matter in the Apple Silicon ecosystem but are **not** text inference engin
 
 | Project | Repo | What it is | Why not a plugin | Pin / status |
 |---------|------|------------|------------------|--------------|
-| **mlx-tune** (ARahim3) | https://github.com/ARahim3/mlx-tune | Fine-tune LLMs (and VLM/TTS/STT/… ) on MLX; Unsloth-compatible API | **Training**, not decode. HLD §7 excludes training/distill. May produce models later measured via **mlx-lm**. | See master pin table: **oos**, verified 2026-07-10, next 2026-08-10 |
+| **mlx-tune** (ARahim3) | https://github.com/ARahim3/mlx-tune | Fine-tune LLMs (and VLM/TTS/STT/… ) on MLX; Unsloth-compatible API | **Training**, not decode. HLD §7 excludes training/fine-tuning; distillation product work is milestone-local oos. May produce models later measured via **mlx-lm**. | See master pin table: **oos**, verified 2026-07-10, next 2026-08-10 |
 
 ---
 

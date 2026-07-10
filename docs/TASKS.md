@@ -15,7 +15,14 @@
 | **M2** | Multi-engine comparison | Plugins (MTPLX, llama.cpp) + MLX landscape catalog + first EXP wave | [milestone/2](https://github.com/weklund/mlx-inference-workbench/milestone/2) |
 | **M3** | Custom Metal / Rust kernels | Kernel maturity, llvm-cov, custom Metal beyond STREAM ceilings | [milestone/3](https://github.com/weklund/mlx-inference-workbench/milestone/3) |
 
-HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal images, training/distill, DSPy product work, multi-Mac TP/PP, cascade product routing) are **not** in any milestone above.
+**Scope boundaries (do not conflate):**
+
+| Source | Exclusions |
+|--------|------------|
+| **HLD §7 (normative)** | NVIDIA/cloud GPU; VLM **image**/multimodal workloads; **training / fine-tuning**; production serving (continuous batching, multi-user, load testing); DSPy/prompt optimization product work; self-evolving agent prompt datasets; cross-platform (non–Apple Silicon) portability |
+| **Milestone-local (M1–M3 board choice — not HLD §7)** | Multi-Mac tensor/pipeline parallel (TP/PP); cascade multi-model **product** routing; **distillation** product work (related to training, but not named in §7) |
+
+Do not treat the milestone-local row as HLD-normative unless §7 is updated to list them.
 
 ### M1 — Lab foundation (current)
 
