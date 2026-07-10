@@ -16,7 +16,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 | 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | **Done** (MVP; see issue for residuals) |
 | 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | Setup |
 | 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup (engine shipped; provisional baseline config; official numbers wait on #3) |
-| 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate |
+| 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate (probe + profile + util API) |
 | 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Setup |
 | 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup |
 | 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10) EXP Prefix cache | Experiment |
@@ -100,7 +100,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
   - [x] p50, p90, p95, p99 percentiles
   - [x] Mean, trimmed mean (drop top 1%), std dev
   - [x] Coefficient of variation + flag if > threshold (default 5%)
-  - [ ] Bandwidth utilization % (after #8 hardware specs) — residual
+  - [x] Bandwidth utilization % helper + profile ceilings (#8); wire into per-run metrics later if needed
   - [ ] Power consumption / energy per token as first-class metrics — residual (fields exist, not fully wired)
   - [x] Acceptance rate fields optional/null for non-speculative
   - [x] E2e-only non-stream path does not invent TTFT/decode/SITL (#19)
@@ -152,13 +152,15 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Curate ≥20 agentic coding prompts — `datasets/agentic_coding_v1.jsonl` ([#6](https://github.com/weklund/mlx-inference-workbench/issues/6))
 - [x] Document versioning + checksum policy in `datasets/README.md`
 
-### M5 Max Hardware Verification (HARD GATE for roofline)
-- [ ] Find Apple's published M5 Max specs (memory bandwidth, GPU cores, TFLOPS)
-- [ ] Run STREAM benchmark (or equivalent) for empirical memory bandwidth
-- [ ] Run peak-FLOPS micro-kernel for empirical GPU compute ceiling
-- [ ] Compare empirical vs. published — use conservative (lower) value
-- [ ] Update Appendix B in HLD with verified numbers
-- [ ] Update hardware profile YAML
+### M5 Max Hardware Verification (HARD GATE for roofline) — #8
+- [x] Find Apple's published M5 Max specs (memory bandwidth, GPU cores; FP32 not published)
+- [x] Run STREAM-equivalent (MLX triad) for empirical memory bandwidth
+- [x] Run peak-FLOPS stand-in (MLX FP32 matmul) for empirical compute ceiling
+- [x] Compare empirical vs. published — conservative = min where both exist
+- [x] Update Appendix B in HLD with methodology + sources
+- [x] Update hardware profile YAML (`make hardware-ceilings-write`)
+- [x] `bandwidth_utilization_pct` + profile loader for harness use
+- [x] Re-verify procedure: `make hardware-ceilings` / `hardware-ceilings-write`
 
 ### Testing
 - [ ] Unit tests: Metrics Computer (known inputs → expected outputs)
@@ -199,8 +201,10 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ## Phase 3: Rust Kernel Layer (~2-4 weeks)
 
-- [ ] Initialize Rust workspace (Cargo.toml at repo root)
-- [ ] Set up metal-rs + Criterion.rs + PyO3 dependencies
+- [x] Initialize Rust workspace (Cargo.toml at repo root) — seeded by `metal_stream` (#8)
+- [x] Metal STREAM bandwidth ceiling crate (`crates/metal_stream`, metal-rs host + MSL)
+- [ ] Criterion.rs micro-bench harness for product kernels
+- [ ] PyO3 bridge for kernel results → Python/MLflow
 - [ ] Implement reference (naive) matmul for correctness baseline
 - [ ] Implement first Metal shader (tiled quantized matmul)
 - [ ] Criterion micro-benchmarks with kernel sweep configs (M/N/K dimensions)
