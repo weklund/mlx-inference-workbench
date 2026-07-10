@@ -29,7 +29,19 @@ uv run pytest tests/unit -m "not gpu and not slow" \
 uv run python scripts/check_core_coverage.py
 ```
 
-CI runs the second form on every PR (`test-python` job in `.github/workflows/ci.yml`).
+CI runs the second form on every PR as job **`Test + Coverage (Python)`**
+(`.github/workflows/ci.yml`).
+
+### Merge protection
+
+`main` requires these status checks (strict, include admins):
+
+| Check | What fails the merge |
+|-------|----------------------|
+| **Test + Coverage (Python)** | Unit test failure, overall coverage &lt; 80%, or core module floor miss |
+| **Lint (Python)** | ruff check / format |
+
+If coverage drops, that job exits non-zero → check red → **PR cannot merge**.
 
 ## Interpreting results
 

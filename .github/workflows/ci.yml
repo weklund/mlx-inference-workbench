@@ -61,23 +61,30 @@ jobs:
       - uses: obi1kenobi/cargo-semver-checks-action@v2
 
   test-python:
-    name: Test (Python)
+    # Name is a required status check on main (see branch ruleset).
+    # Coverage failure exits non-zero and blocks merge.
+    name: Test + Coverage (Python)
     runs-on: macos-latest
     needs: lint-python
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --frozen --extra dev
-      # Coverage gate (#23): workbench package only; overall fail_under=80 in pyproject.
-      # Per-module floors in scripts/check_core_coverage.py (scripts/CLI not gated).
-      - name: Unit tests + coverage
+      # Coverage gate (#23): workbench package only.
+      # Overall fail_under=80 (pyproject + explicit --cov-fail-under).
+      # Per-module floors: scripts/check_core_coverage.py (scripts/CLI not gated).
+      - name: Unit tests + coverage (fail under 80%)
         run: |
+          set -euo pipefail
           uv run pytest -m "not gpu and not slow" --tb=short \
             --cov=workbench \
             --cov-report=term-missing \
-            --cov-report=json:coverage.json
+            --cov-report=json:coverage.json \
+            --cov-fail-under=80
       - name: Core module coverage floors
-        run: uv run python scripts/check_core_coverage.py
+        run: |
+          set -euo pipefail
+          uv run python scripts/check_core_coverage.py
 
   test-rust:
     name: Test (Rust)
