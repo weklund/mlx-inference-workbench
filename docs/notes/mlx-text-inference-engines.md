@@ -14,10 +14,21 @@ We measure **single-run, comparable, scientific** text LLM inference on Apple Si
 | Programmatic generate/stream with honest timings | Continuous batching / multi-user serving as a *feature* |
 | Same prompts, thermal class, schema gates | OpenAI-compatible server product UX |
 | Optional speculative / cache metrics when measurable | Multimodal image workloads (text path only) |
+| | **Training / fine-tuning / distillation** (separate from inference engines) |
 
 **Implication:** A project can be an excellent *local server* and still be a **poor** first Engine plugin if it only exposes HTTP, batches many users, or hides per-token timing. Prefer libraries (or servers with a clear single-request programmatic path) that we can drive under our orchestrator.
 
 Related **non-MLX** compare arms (still HLD / M2): **llama.cpp** Metal (#15), **BaseRT** (API TBD), **Custom kernel** (M3). **MTPLX** (#9) is MLX-adjacent speculative stack — keep as first multi-backend target.
+
+---
+
+## Out of scope (adjacent MLX tooling — not Engine plugins)
+
+These matter in the Apple Silicon ecosystem but are **not** text inference engines for our harness. Listed so research notes do not leave gaps.
+
+| Project | Repo | What it is | Why not a plugin |
+|---------|------|------------|------------------|
+| **mlx-tune** (ARahim3) | https://github.com/ARahim3/mlx-tune | Fine-tune LLMs (and VLM/TTS/STT/… ) on MLX; Unsloth-compatible API (SFT, DPO, GRPO, LoRA, …) | **Training**, not decode. HLD §7 excludes training/distill as product work. May produce models later measured via **mlx-lm** / other engines — no `backend: mlx-tune` arm. |
 
 ---
 
