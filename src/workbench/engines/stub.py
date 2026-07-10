@@ -20,16 +20,8 @@ class StubEngine(Engine):
 
     def load_model(self, config: ModelConfig) -> None:
         if config.backend not in {"stub", "fake"}:
-            # allow stub backend name only
-            if config.backend != "stub":
-                raise EngineLoadError(f"StubEngine cannot load backend={config.backend!r}")
+            raise EngineLoadError(f"StubEngine cannot load backend={config.backend!r}")
         self._loaded = config
-
-    def warmup(self, prompts: list[str], n: int, params: GenParams) -> None:
-        self._ensure_loaded()
-        for _ in range(n):
-            for p in prompts[:1] or ["warmup"]:
-                self.generate(p, params)
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         self._ensure_loaded()
@@ -62,11 +54,6 @@ class StubEngine(Engine):
             energy_per_token_joules=None,
             e2e_ms=e2e_ms,
         )
-
-    def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        # Stub always "correct" for smoke; unit tests can subclass
-        _ = self.generate(prompt, GenParams(max_tokens=8, seed=42))
-        return True
 
     def _ensure_loaded(self) -> None:
         if self._loaded is None:

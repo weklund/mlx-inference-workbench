@@ -7,12 +7,7 @@ from typing import Any
 
 from workbench.config import ModelConfig
 from workbench.engines.base import Engine, EngineLoadError, GenerationError, GenParams
-from workbench.engines.timeout import generate_with_timeout
 from workbench.models import GenerationResult, GenerationStatus, ThermalReading
-
-# Align correctness-gate deadline with BenchmarkConfig.per_iteration_timeout_sec default
-# so free-form validation cannot hang when the orchestrator does not pass GenParams.
-_DEFAULT_CORRECTNESS_TIMEOUT_SEC = 300.0
 
 
 class MlxLmEngine(Engine):
@@ -38,13 +33,6 @@ class MlxLmEngine(Engine):
         self._model = model
         self._tokenizer = tokenizer
         self._config = config
-
-    def warmup(self, prompts: list[str], n: int, params: GenParams) -> None:
-        self._ensure()
-        for _ in range(n):
-            for p in prompts[:1]:
-                # Same wall-clock guard as timed iterations (params.timeout_sec).
-                generate_with_timeout(self, p, params)
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         self._ensure()
@@ -141,24 +129,6 @@ class MlxLmEngine(Engine):
             return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
         except Exception:
             return 0
-
-    def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        params = GenParams(
-            max_tokens=64,
-            temperature=0.0,
-            seed=42,
-            timeout_sec=_DEFAULT_CORRECTNESS_TIMEOUT_SEC,
-        )
-        result = generate_with_timeout(self, prompt, params)
-        if result.status in (GenerationStatus.ERROR, GenerationStatus.TIMEOUT):
-            return False
-        if tolerance <= 0:
-            # For real models, exact match is too strict for free-form prompts.
-            # Smoke path uses stub. Here: non-empty output is the soft gate unless reference set.
-            if not reference:
-                return bool(result.output_text.strip())
-            return result.output_text.strip() == reference.strip()
-        return reference.strip() in result.output_text
 
     def _ensure(self) -> None:
         if self._model is None or self._tokenizer is None:

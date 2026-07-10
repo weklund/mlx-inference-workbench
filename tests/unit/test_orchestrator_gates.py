@@ -18,9 +18,6 @@ class OkEngine(Engine):
     def load_model(self, config: ModelConfig) -> None:
         return None
 
-    def warmup(self, prompts: list[str], n: int, params: GenParams) -> None:
-        return None
-
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         return GenerationResult(
             status=GenerationStatus.SUCCESS,
@@ -33,12 +30,11 @@ class OkEngine(Engine):
             e2e_ms=20.0,
         )
 
-    def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        return True
-
 
 class BadCorrectnessEngine(OkEngine):
-    def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
+    def score_correctness(
+        self, result: GenerationResult, reference: str = "", tolerance: float = 0.0
+    ) -> bool:
         return False
 
 
@@ -82,12 +78,24 @@ def test_corrupt_prompt_dataset_aborts_without_publishing_a_run(tmp_path: Path):
     assert store.list_runs() == []
 
 
+def test_blank_correctness_reference_skips_gate(tmp_path: Path):
+    """Phase 1 default: no fake gate with empty reference."""
+    repo, cfg = _base_cfg(tmp_path)
+    # Would fail if empty-ref scoring were applied with base fail-closed
+    run_experiment(cfg, repo_root=repo, engine=OkEngine(), correctness_reference="")
+
+
 def test_failed_correctness_gate_aborts_without_publishing_a_run(tmp_path: Path):
-    """Wrong/unsafe backend output must not become a performance result."""
+    """When a reference is provided, wrong output must not become a performance result."""
     repo, cfg = _base_cfg(tmp_path)
 
-    with pytest.raises(OrchestratorError):
-        run_experiment(cfg, repo_root=repo, engine=BadCorrectnessEngine())
+    with pytest.raises(OrchestratorError, match="Correctness gate"):
+        run_experiment(
+            cfg,
+            repo_root=repo,
+            engine=BadCorrectnessEngine(),
+            correctness_reference="expected-text",
+        )
 
     store = RunStore(tmp_path / "results", enable_mlflow=False)
     assert store.list_runs() == []
@@ -104,7 +112,6 @@ def test_no_successful_iterations_is_not_a_usable_baseline(tmp_path: Path):
     with pytest.raises(OrchestratorError):
         run_experiment(cfg, repo_root=repo, engine=AlwaysErrorEngine())
 
-    # Diagnostic artifact may exist; it must not claim full usable stats
     store = RunStore(tmp_path / "results", enable_mlflow=False)
     runs = store.list_runs()
     if runs:
