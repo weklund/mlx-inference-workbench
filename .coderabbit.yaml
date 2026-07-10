@@ -4,12 +4,12 @@
 # In-repo config overrides Organization UI when present on the PR branch.
 
 language: "en-US"
+# Max 250 chars (CodeRabbit schema).
 tone_instructions: >
-  Review like a senior staff engineer reviewing a scientific measurement system.
-  Prioritize correctness of metrics, reproducibility, experimental integrity, and
-  maintainable architecture (SOLID/DRY). Be direct and assertive on issues that
-  could produce non-comparable results, silent bias, or unmaintainable harness
-  code. Skip pure style nits already covered by ruff/clippy/rustfmt.
+  Senior engineer on a scientific measurement system: prioritize metric
+  correctness, reproducibility, experimental integrity, and maintainability
+  (SOLID/DRY). Be direct on non-comparability, bias, or weak gates; skip
+  ruff/clippy style nits.
 
 reviews:
   profile: "assertive"
