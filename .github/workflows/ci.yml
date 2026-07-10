@@ -9,6 +9,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: checkout + local tooling only. No job opens PRs, pushes,
+# uploads packages, or mutates checks beyond the default job status.
+permissions:
+  contents: read
+
 jobs:
   check-rust:
     name: Check for Rust code
@@ -48,6 +53,9 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
 
+  # cargo-semver-checks needs a git baseline package. Skip publish=false crates and
+  # packages that do not exist at the PR base (new crates — no prior API to break).
+  # Existing publishable crates are checked with --baseline-rev (no crates.io required).
   semver-check:
     name: API Compatibility (cargo-semver-checks)
     runs-on: ubuntu-latest
@@ -58,7 +66,56 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
-      - uses: obi1kenobi/cargo-semver-checks-action@v2
+      - name: Detect publishable workspace packages
+        id: pubs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          ROOT="$(pwd)"
+          # publish == null → default (publishable); publish == [] → publish = false
+          # Only keep packages whose Cargo.toml exists at the PR base (check-release
+          # needs a baseline API; brand-new crates are logged and skipped).
+          KEEP=""
+          while IFS="$(printf '\t')" read -r name manifest; do
+            [ -z "${name:-}" ] && continue
+            rel="${manifest#"$ROOT"/}"
+            if git cat-file -e "${BASE}:${rel}" 2>/dev/null; then
+              KEEP="${KEEP}${KEEP:+ }${name}"
+              echo "Include $name (manifest exists at baseline: $rel)"
+            else
+              echo "Skip $name — new package (no $rel at baseline $BASE); not running check-release"
+            fi
+          done < <(cargo metadata --no-deps --format-version=1 | jq -r '
+            .packages[]
+            | select(.source == null)
+            | select(.publish == null or (.publish | length > 0))
+            | "\(.name)\t\(.manifest_path)"
+          ')
+          if [ -z "$KEEP" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No publishable packages present at baseline. Skipping cargo-semver-checks."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "packages=$KEEP" >> "$GITHUB_OUTPUT"
+            echo "Will check: $KEEP"
+          fi
+      - name: Install cargo-semver-checks
+        if: steps.pubs.outputs.run == 'true'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-semver-checks
+      - name: Check API compatibility vs PR base
+        if: steps.pubs.outputs.run == 'true'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          for pkg in ${{ steps.pubs.outputs.packages }}; do
+            echo "::group::semver-checks $pkg (baseline $BASE)"
+            cargo semver-checks check-release -p "$pkg" --baseline-rev "$BASE"
+            echo "::endgroup::"
+          done
 
   test-python:
     # Name is a required status check on main (branch protection).
@@ -97,11 +154,20 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - uses: dtolnay/rust-toolchain@stable
         if: needs.check-rust.outputs.has-rust == 'true'
-      - name: Build Rust bindings
+      - name: Build Rust workspace
+        if: needs.check-rust.outputs.has-rust == 'true'
+        run: cargo build --workspace --release
+      # PyO3 / maturin develop only when a maturin package exists (Phase 3+)
+      - name: Build PyO3 bindings (if configured)
         if: needs.check-rust.outputs.has-rust == 'true'
         run: |
-          uv pip install maturin
-          uv run maturin develop --release
+          if grep -rq 'maturin' --include='Cargo.toml' --include='pyproject.toml' . 2>/dev/null \
+            && grep -rq 'pyo3' --include='Cargo.toml' . 2>/dev/null; then
+            uv pip install maturin
+            uv run maturin develop --release
+          else
+            echo "No PyO3 package yet — skip maturin"
+          fi
       - run: make sync
       - run: make test-integration
 
