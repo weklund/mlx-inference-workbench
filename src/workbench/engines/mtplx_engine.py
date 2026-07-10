@@ -6,6 +6,7 @@ orchestrator policy. Timing is e2e-only until a stream path is wired.
 
 from __future__ import annotations
 
+from pathlib import Path
 import time
 from typing import Any
 
@@ -15,6 +16,46 @@ from workbench.models import GenerationResult, GenerationStatus, ThermalReading
 
 # Default when YAML omits model.mtplx (engine still usable with defaults).
 _DEFAULT_MTPLX = MtplxOptions()
+
+
+def resolve_mtplx_model_path(model_id: str) -> str:
+    """Resolve a local directory or Hugging Face repo id for ``mtplx.load``.
+
+    ``mtplx.load`` expects a filesystem path with ``config.json``. HF repo
+    ids (e.g. ``Qwen/Qwen3.5-0.8B``) are resolved via ``snapshot_download``.
+
+    Args:
+        model_id: Absolute/relative path or ``org/name`` HF id.
+
+    Returns:
+        Filesystem path string suitable for ``mtplx.load``.
+
+    Raises:
+        EngineLoadError: Path missing or HF resolution failed.
+    """
+    path = Path(model_id).expanduser()
+    if path.is_dir() and (path / "config.json").is_file():
+        return str(path.resolve())
+    if path.exists() and not path.is_dir():
+        raise EngineLoadError(f"MTPLX model path is not a model directory: {model_id}")
+
+    # Heuristic: HF repos look like org/name (exactly one slash, no abs path).
+    if "/" in model_id and not model_id.startswith((".", "/", "~")):
+        try:
+            from huggingface_hub import snapshot_download
+        except ImportError as e:
+            raise EngineLoadError(
+                "huggingface_hub is required to resolve HF model ids for MTPLX"
+            ) from e
+        try:
+            resolved = snapshot_download(repo_id=model_id)
+        except Exception as e:
+            raise EngineLoadError(f"Failed to resolve Hugging Face model {model_id!r}: {e}") from e
+        return str(resolved)
+
+    raise EngineLoadError(
+        f"MTPLX model not found as a local directory with config.json: {model_id}"
+    )
 
 
 def speculative_metrics_from_stats(stats: Any) -> tuple[float | None, float | None]:
@@ -82,10 +123,13 @@ class MtplxEngine(Engine):
         if not model_id:
             raise EngineLoadError("MtplxEngine requires model_id or name")
 
+        model_path = resolve_mtplx_model_path(model_id)
         try:
-            self._runtime = mtplx.load(model_id, mtp=True)
+            self._runtime = mtplx.load(model_path, mtp=True)
         except Exception as e:
-            raise EngineLoadError(f"Failed to load {model_id} via mtplx: {e}") from e
+            raise EngineLoadError(
+                f"Failed to load {model_id!r} (path={model_path}) via mtplx: {e}"
+            ) from e
         self._config = config
 
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:

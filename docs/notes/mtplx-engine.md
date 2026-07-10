@@ -56,6 +56,17 @@ uv sync --extra mtplx
 
 Missing package → `EngineLoadError` at `load_model` with install hint.
 
+## Model ids and paths
+
+`mtplx.load` needs a **local directory** with `config.json`. The plugin resolves:
+
+1. Local path containing `config.json`, or
+2. Hugging Face `org/name` via `huggingface_hub.snapshot_download`
+
+**MTP weights matter.** Many `mlx-community` 4-bit Qwen3.5 quants are architecture-compatible but **missing MTP tensors** (`mtplx inspect` → `missing-mtp-weights`). Prefer official `Qwen/Qwen3.5-*` (or forged) snapshots that include MTP. Smoke config: `configs/experiments/smoke_mtplx_tiny.yaml` (`make smoke-mtplx-tiny`).
+
+Local smoke (2026-07-10, `b0477187636f`): `make smoke-mtplx-tiny` completed with `backend=mtplx`, e2e metrics populated, and **`acceptance_rate` present** (mean 0.0 on smoke prompts / depth 4 — field is non-null; low accept is a measurement finding, not a harness bug). Decode/TTFT null is expected (e2e-only v1).
+
 ## Out of scope (still)
 
 - Continuous batching / OpenAI server

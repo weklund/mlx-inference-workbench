@@ -1,0 +1,46 @@
+schema_version: "1.0"
+
+experiment:
+  name: "smoke-mtplx-tiny"
+  description: >
+    Fast local MTPLX smoke with a small MTP-capable model (Qwen3.5-0.8B).
+    Requires: uv sync --extra mtplx, Metal, HF weights (auto-resolved).
+    Not an official baseline — harness + acceptance-field bring-up only.
+    Note: stock mlx-community Qwen3.5-*-4bit quants often lack MTP tensors;
+    prefer an official Qwen/Qwen3.5-* snapshot with mtp weights (see mtplx inspect).
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "qwen3.5-0.8b"
+  model_id: "Qwen/Qwen3.5-0.8B"
+  quantization: "bf16"
+  backend: "mtplx"
+  max_tokens: 64
+  mtplx:
+    speculative_depth: 4
+
+benchmark:
+  warmup_iterations: 1
+  timed_iterations: 2
+  per_iteration_timeout_sec: 180
+  prompt_dataset: "datasets/smoke_v1.jsonl"
+  prompt_checksum: "datasets/smoke_v1.sha256"
+  cooldown_between_runs_sec: 0
+  monitor_thermal: false
+  abort_if_throttling: false
+  max_prompts: 2
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: false

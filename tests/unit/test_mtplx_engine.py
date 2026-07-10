@@ -8,7 +8,11 @@ import pytest
 
 from workbench.config import ModelConfig, MtplxOptions
 from workbench.engines.base import EngineLoadError, GenParams
-from workbench.engines.mtplx_engine import MtplxEngine, speculative_metrics_from_stats
+from workbench.engines.mtplx_engine import (
+    MtplxEngine,
+    resolve_mtplx_model_path,
+    speculative_metrics_from_stats,
+)
 from workbench.models import GenerationStatus
 
 
@@ -143,3 +147,25 @@ def test_registry_exposes_mtplx():
     eng = create_engine("mtplx")
     assert eng.name() == "mtplx"
     assert eng.supports_speculative() is True
+
+
+def test_resolve_local_model_dir(tmp_path):
+    (tmp_path / "config.json").write_text("{}", encoding="utf-8")
+    assert resolve_mtplx_model_path(str(tmp_path)) == str(tmp_path.resolve())
+
+
+def test_resolve_hf_id_uses_snapshot_download(monkeypatch):
+    def fake_snapshot(*, repo_id: str):
+        assert repo_id == "Qwen/Qwen3.5-0.8B"
+        return "/tmp/fake-qwen-snapshot"
+
+    import sys
+
+    hub = SimpleNamespace(snapshot_download=fake_snapshot)
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+    assert resolve_mtplx_model_path("Qwen/Qwen3.5-0.8B") == "/tmp/fake-qwen-snapshot"
+
+
+def test_resolve_missing_local_raises():
+    with pytest.raises(EngineLoadError, match="not found"):
+        resolve_mtplx_model_path("/no/such/mtplx/model/dir")
