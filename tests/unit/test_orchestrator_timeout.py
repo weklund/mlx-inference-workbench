@@ -18,9 +18,6 @@ class SlowEngine(Engine):
     def load_model(self, config: ModelConfig) -> None:
         return None
 
-    def warmup(self, prompts: list[str], n: int, params: GenParams) -> None:
-        return None
-
     def generate(self, prompt: str, params: GenParams) -> GenerationResult:
         import time
 
@@ -36,16 +33,11 @@ class SlowEngine(Engine):
             e2e_ms=1000.0,
         )
 
-    def validate_correctness(self, prompt: str, reference: str, tolerance: float = 0.0) -> bool:
-        return True
-
 
 def test_iteration_past_deadline_is_excluded_from_success_metrics(tmp_path: Path):
     """
     Property (HLD): if generation exceeds per-iteration deadline, that iteration
     must not count as a successful measurement (not used as a valid sample).
-
-    We do not assert how timeout is implemented (threads, signals, etc.).
     """
     repo = Path(__file__).resolve().parents[2]
     cfg = load_config(repo / "configs/experiments/smoke_minimal.yaml")
@@ -62,14 +54,11 @@ def test_iteration_past_deadline_is_excluded_from_success_metrics(tmp_path: Path
     try:
         record = run_experiment(cfg, repo_root=repo, engine=SlowEngine())
     except OrchestratorError:
-        # Fail-closed when zero valid samples is allowed; inspect persisted run if any.
         store = RunStore(results, enable_mlflow=False)
         runs = store.list_runs()
         assert runs, "expected a persisted diagnostic run when all iterations fail"
         record = store.load(runs[0]["run_id"])
 
     assert record is not None
-    # No successful samples in the metric sense
     assert record.metrics.valid_iterations == 0
-    # No iteration reported success (would poison baselines)
     assert all(it["status"] != GenerationStatus.SUCCESS.value for it in record.iterations)
