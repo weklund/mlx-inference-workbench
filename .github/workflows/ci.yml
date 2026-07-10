@@ -97,11 +97,20 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - uses: dtolnay/rust-toolchain@stable
         if: needs.check-rust.outputs.has-rust == 'true'
-      - name: Build Rust bindings
+      - name: Build Rust workspace
+        if: needs.check-rust.outputs.has-rust == 'true'
+        run: cargo build --workspace --release
+      # PyO3 / maturin develop only when a maturin package exists (Phase 3+)
+      - name: Build PyO3 bindings (if configured)
         if: needs.check-rust.outputs.has-rust == 'true'
         run: |
-          uv pip install maturin
-          uv run maturin develop --release
+          if grep -rq 'maturin' --include='Cargo.toml' --include='pyproject.toml' . 2>/dev/null \
+            && grep -rq 'pyo3' --include='Cargo.toml' . 2>/dev/null; then
+            uv pip install maturin
+            uv run maturin develop --release
+          else
+            echo "No PyO3 package yet — skip maturin"
+          fi
       - run: make sync
       - run: make test-integration
 

@@ -1,15 +1,31 @@
-# Hardware profile skeleton — empirical bandwidth/FLOPS filled by issue #8
 profile: m5_max_128gb
+profile_version: '1.2'
 chip: Apple M5 Max
 unified_memory_gb: 128
+verified_at: '2026-07-10'
 memory_bandwidth_gbs:
-  published: null  # UNVERIFIED
-  empirical: null  # UNVERIFIED
+  published: 614.0
+  empirical: 536.57
+  empirical_metal_stream: 536.57
+  empirical_mlx: 535.58
+  unit: GB/s
+  source_published: https://support.apple.com/en-us/126319
+  source_empirical: metal_stream=rust_metal_stream_float4; mlx=mlx_compiled_stream_triad
+  notes: Kernel-grade denominator prefers empirical_metal_stream (Rust + MSL STREAM).
+    empirical_mlx is a fast Python proxy. conservative = min(published, empirical).
 gpu_cores:
-  published: null
-  empirical: null
+  published: 40
+  empirical: 40
+  unit: cores
+  source_published: https://support.apple.com/en-us/126319
+  source_empirical: system_profiler SPDisplaysDataType
+  notes: "32-core SKU \u2192 460 GB/s; 40-core SKU \u2192 614 GB/s (Apple)."
 gpu_fp32_tflops:
   published: null
-  empirical: null
-notes: >
-  Roofline percentages blocked until published + empirical verification (HLD Appendix B / issue #8).
+  empirical: 40.16
+  unit: TFLOPS
+  source_published: null
+  source_empirical: mlx_matmul_fp32 via scripts/verify_m5_max_ceilings.py
+  notes: Apple does not publish GPU FP32 TFLOPS. Empirical = MLX FP32 matmul peak.
+notes: 'Issue #8 / HLD Appendix B / Phase 3 kernel ceiling. Re-run: make hardware-ceilings-write.
+  Custom kernel % of peak uses conservative bandwidth (Metal STREAM when available).'
