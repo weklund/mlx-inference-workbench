@@ -42,6 +42,9 @@ class MlxLmEngine(Engine):
         except ImportError as e:
             raise GenerationError("mlx-lm generate API unavailable") from e
 
+        self._seed_rng(params.seed)
+        self._reset_peak_memory()
+
         sampler = (
             make_sampler(temp=params.temperature)
             if params.temperature > 0
@@ -97,6 +100,7 @@ class MlxLmEngine(Engine):
 
         text = output if isinstance(output, str) else str(output)
         e2e_s = time.perf_counter() - start
+        mem = self.get_memory_usage_bytes()
         if e2e_only or not timestamps:
             # Non-stream (or empty stream): do not invent per-token times.
             total_tokens = max(1, len(self._tokenizer.encode(text))) if text else 0
@@ -106,7 +110,7 @@ class MlxLmEngine(Engine):
                 token_timestamps=[],
                 ttft_ms=None,
                 total_tokens=total_tokens,
-                memory_peak_bytes=self.get_memory_usage_bytes(),
+                memory_peak_bytes=mem,
                 thermal_state=ThermalReading(
                     method="none", thermal_pressure=None, notes="filled_by_orchestrator"
                 ),
@@ -119,7 +123,7 @@ class MlxLmEngine(Engine):
             token_timestamps=timestamps,
             ttft_ms=timestamps[0] * 1000.0,
             total_tokens=len(timestamps),
-            memory_peak_bytes=self.get_memory_usage_bytes(),
+            memory_peak_bytes=mem,
             thermal_state=ThermalReading(
                 method="none", thermal_pressure=None, notes="filled_by_orchestrator"
             ),
@@ -127,13 +131,40 @@ class MlxLmEngine(Engine):
         )
 
     def get_memory_usage_bytes(self) -> int:
-        # Best-effort RSS
+        """Prefer MLX allocator peak; fall back to process RSS; else 0."""
+        try:
+            import mlx.core as mx
+
+            return int(mx.get_peak_memory())
+        except Exception:
+            pass
         try:
             import resource
 
+            # macOS: ru_maxrss is bytes; Linux: kilobytes. Workbench targets Apple Silicon.
             return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
         except Exception:
             return 0
+
+    @staticmethod
+    def _seed_rng(seed: int) -> None:
+        """Apply GenParams.seed to MLX PRNG so temp>0 (and any stochastic paths) are reproducible."""
+        try:
+            import mlx.core as mx
+
+            mx.random.seed(int(seed))
+        except Exception:
+            # Non-fatal: greedy temp=0 still works; sampling repro degrades.
+            pass
+
+    @staticmethod
+    def _reset_peak_memory() -> None:
+        try:
+            import mlx.core as mx
+
+            mx.reset_peak_memory()
+        except Exception:
+            pass
 
     def _ensure(self) -> None:
         if self._model is None or self._tokenizer is None:

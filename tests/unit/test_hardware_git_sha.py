@@ -3,7 +3,7 @@
 import subprocess
 from pathlib import Path
 
-from workbench.hardware import capture_git_sha
+from workbench.hardware import capture_git_sha, library_versions
 
 
 def _init_repo(path: Path, message: str) -> str:
@@ -60,3 +60,16 @@ def test_capture_git_sha_none_without_git_repo(tmp_path: Path, monkeypatch):
     empty.mkdir()
     monkeypatch.chdir(empty)
     assert capture_git_sha(empty) is None
+
+
+def test_library_versions_records_mlx_and_mlx_lm_as_report_dimension():
+    """Versions are a free metadata dimension for reports (not a pin / gate)."""
+    v = library_versions()
+    assert "python" in v
+    assert "platform" in v
+    # Installed in workbench env; must not be unknown/not_installed
+    assert v["mlx"] not in {"unknown", "not_installed"}
+    assert v["mlx_lm"] not in {"unknown", "not_installed"}
+    # Sanity: look like version strings
+    assert any(c.isdigit() for c in v["mlx"])
+    assert any(c.isdigit() for c in v["mlx_lm"])
