@@ -26,7 +26,7 @@ HLD “Phase 0/1/2…” language is historical design structure; map it to mile
 | MS | Focus | Status (approx.) |
 |----|--------|------------------|
 | **[M1: Lab foundation](https://github.com/weklund/mlx-inference-workbench/milestone/1)** | Harness, CI, mlx-lm, ceilings, thermal HARD GATE, official baseline | Harness + ceilings + provisional baseline **done**; open: [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) thermal, [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) official baseline |
-| **[M2: Multi-engine comparison](https://github.com/weklund/mlx-inference-workbench/milestone/2)** | MTPLX + llama.cpp plugins; EXP wave (prefix cache, free draft, quant, …) | Next product wave after M1 close-out |
+| **[M2: Multi-engine comparison](https://github.com/weklund/mlx-inference-workbench/milestone/2)** | MTPLX + llama.cpp plugins; [MLX engine landscape](docs/notes/mlx-text-inference-engines.md) (#38); EXP wave | Next product wave after M1 close-out |
 | **[M3: Custom Metal / Rust kernels](https://github.com/weklund/mlx-inference-workbench/milestone/3)** | Kernel maturity, llvm-cov, custom Metal beyond STREAM | Seeded by `metal_stream`; [#34](https://github.com/weklund/mlx-inference-workbench/issues/34) |
 
 Later optimization themes (skew-aware paths, adaptive controllers, thermal closed-loop, agent rollback) stay in HLD / TASKS Phase 3+ — not separate README phases.
@@ -140,6 +140,7 @@ All metrics reported as distributions: p50, p90, p95, p99, trimmed mean, std dev
 
 - [HLD: Benchmarking Harness](docs/HLD.md) — Architecture, requirements, design decisions (incl. original HLD phase narrative)
 - [Task Breakdown](docs/TASKS.md) — Milestone ↔ issue map + residual checkboxes
+- [MLX text engine landscape](docs/notes/mlx-text-inference-engines.md) — M2 catalog & plugin prioritization ([#38](https://github.com/weklund/mlx-inference-workbench/issues/38))
 - Milestones: [M1](https://github.com/weklund/mlx-inference-workbench/milestone/1) · [M2](https://github.com/weklund/mlx-inference-workbench/milestone/2) · [M3](https://github.com/weklund/mlx-inference-workbench/milestone/3) · Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4)
 
 ## Citing

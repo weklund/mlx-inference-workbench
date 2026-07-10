@@ -12,7 +12,7 @@
 | MS | Title | Intent | Link |
 |----|--------|--------|------|
 | **M1** | Lab foundation | Trustworthy single-stack lab: harness, CI, mlx-lm, ceilings, thermal gate, official baseline | [milestone/1](https://github.com/weklund/mlx-inference-workbench/milestone/1) |
-| **M2** | Multi-engine comparison | Plugins (MTPLX, llama.cpp) + first EXP wave; comparable cross-backend data | [milestone/2](https://github.com/weklund/mlx-inference-workbench/milestone/2) |
+| **M2** | Multi-engine comparison | Plugins (MTPLX, llama.cpp) + MLX landscape catalog + first EXP wave | [milestone/2](https://github.com/weklund/mlx-inference-workbench/milestone/2) |
 | **M3** | Custom Metal / Rust kernels | Kernel maturity, llvm-cov, custom Metal beyond STREAM ceilings | [milestone/3](https://github.com/weklund/mlx-inference-workbench/milestone/3) |
 
 HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal images, training/distill, DSPy product work, multi-Mac TP/PP, cascade product routing) are **not** in any milestone above.
@@ -35,19 +35,24 @@ HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal 
 
 ### M2 — Multi-engine comparison (next product wave)
 
-**DoD:** ≥2 backends on Engine contract; comparable runs under shared gates; EXP wave done or deferred.
+**DoD:** ≥2 backends on Engine contract; comparable runs under shared gates; EXP wave done or deferred; MLX engine landscape catalog kept current.
+
+**MLX text engine landscape (research):** [`docs/notes/mlx-text-inference-engines.md`](notes/mlx-text-inference-engines.md) · tracking [#38](https://github.com/weklund/mlx-inference-workbench/issues/38)
 
 | Status | Issue | Role |
 |--------|-------|------|
-| Open | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Plugin (start after or design-parallel with M1 close-out) |
+| Open | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Plugin (primary multi-backend arm) |
 | Open | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp Metal engine | Plugin (quant / free-draft) |
-| Open | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10) EXP Prefix cache | Experiment |
+| Open | [#38](https://github.com/weklund/mlx-inference-workbench/issues/38) MLX engine catalog / prioritization | Rapid-MLX, oMLX, vllm-mlx, mlx-serve, LM Studio mlx-engine, … |
+| Open | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10) EXP Prefix cache | Experiment (also informed by server prefix/SSD-cache ideas) |
 | Open | [#11](https://github.com/weklund/mlx-inference-workbench/issues/11) EXP Free draft | Experiment |
 | Open | [#12](https://github.com/weklund/mlx-inference-workbench/issues/12) EXP KV compression | Experiment |
 | Open | [#13](https://github.com/weklund/mlx-inference-workbench/issues/13) EXP Quant matrix | Experiment |
 | Open | [#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP Adaptive draft | Experiment |
 
-**Suggested order:** #9 → mlx-lm vs MTPLX compare → #15 as needed → EXP #10 → #11 → #13 → #12 → #14.
+**Suggested order:** #9 → mlx-lm vs MTPLX compare → #15 as needed → #38 eval for extra plugins → EXP #10 → #11 → #13 → #12 → #14.
+
+**Not automatic plugins:** continuous-batch / multi-tenant servers (vllm-mlx, oMLX-as-product, thin OpenAI wrappers) — HLD §7; harvest ideas into EXPs, not default Engine arms.
 
 ### M3 — Custom Metal / Rust kernels (later)
 
