@@ -58,6 +58,8 @@ def compute_distribution(
 
 def _decode_tok_s(result: GenerationResult) -> float | None:
     """Tokens after first / time after first token."""
+    if result.timestamps_synthesized:
+        return None  # uniform e2e splits are not measured inter-token times
     if result.total_tokens < 2 or len(result.token_timestamps) < 2:
         return None
     # timestamps are absolute seconds from start of generation
@@ -71,6 +73,8 @@ def _decode_tok_s(result: GenerationResult) -> float | None:
 
 def _sitl_ms(result: GenerationResult) -> float | None:
     """Mean inter-token latency in ms (excluding TTFT interval)."""
+    if result.timestamps_synthesized:
+        return None
     if result.total_tokens < 2 or len(result.token_timestamps) < 2:
         return None
     gaps = np.diff(result.token_timestamps)
@@ -84,6 +88,15 @@ def _e2e_ms(result: GenerationResult) -> float:
         return result.e2e_ms
     if result.token_timestamps:
         return float(result.token_timestamps[-1] * 1000.0)
+    if result.ttft_ms is not None:
+        return result.ttft_ms
+    return 0.0
+
+
+def _measured_ttft_ms(result: GenerationResult) -> float | None:
+    """TTFT only when actually measured (not synthesized from e2e)."""
+    if result.timestamps_synthesized or result.ttft_ms is None:
+        return None
     return result.ttft_ms
 
 
@@ -108,7 +121,8 @@ def summarize_iterations(
     else:
         quality = "full"
 
-    ttft = compute_distribution([r.ttft_ms for r in valid], percentiles)
+    ttft_vals = [v for r in valid if (v := _measured_ttft_ms(r)) is not None]
+    ttft = compute_distribution(ttft_vals, percentiles)
     decode_vals = [v for r in valid if (v := _decode_tok_s(r)) is not None]
     decode = compute_distribution(decode_vals, percentiles)
     sitl_vals = [v for r in valid if (v := _sitl_ms(r)) is not None]

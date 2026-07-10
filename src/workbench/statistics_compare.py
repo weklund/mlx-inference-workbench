@@ -11,6 +11,19 @@ from scipy import stats
 from workbench.comparability import GateResult, check_runs_comparable
 from workbench.models import DistributionStats, RunRecord
 
+# MetricSummary fields that hold DistributionStats (comparable sample series).
+# Reject scalars/tags like quality_tag, unstable, valid_iterations.
+DISTRIBUTION_METRIC_NAMES: frozenset[str] = frozenset(
+    {
+        "ttft_ms",
+        "decode_tok_s",
+        "sitl_ms",
+        "e2e_ms",
+        "memory_peak_bytes",
+        "acceptance_rate",
+    }
+)
+
 
 @dataclass(frozen=True)
 class ComparisonResult:
@@ -176,7 +189,17 @@ def compare_runs(
     *,
     metric_name: str = "decode_tok_s",
 ) -> ComparisonResult:
+    if metric_name not in DISTRIBUTION_METRIC_NAMES:
+        raise ValueError(
+            f"Unsupported metric_name {metric_name!r}; "
+            f"must be a DistributionStats field, one of {sorted(DISTRIBUTION_METRIC_NAMES)}"
+        )
     gate = check_runs_comparable(run_a, run_b)
-    dist_a = getattr(run_a.metrics, metric_name, None)
-    dist_b = getattr(run_b.metrics, metric_name, None)
+    dist_a = getattr(run_a.metrics, metric_name)
+    dist_b = getattr(run_b.metrics, metric_name)
+    if dist_a is not None and not isinstance(dist_a, DistributionStats):
+        raise TypeError(f"metrics.{metric_name} is not DistributionStats: {type(dist_a)!r}")
+    if dist_b is not None and not isinstance(dist_b, DistributionStats):
+        raise TypeError(f"metrics.{metric_name} is not DistributionStats: {type(dist_b)!r}")
+    # None dist → existing insufficient_data path inside compare_distributions
     return compare_distributions(dist_a, dist_b, metric_name=metric_name, gate=gate)

@@ -14,12 +14,15 @@ if TYPE_CHECKING:
 # Fields that must match for a fair comparison (experiment factor held constant).
 # Quantization/backend/model are intentional experimental factors — compared runs
 # must still share prompts, hardware profile, schema, and thermal quality class.
+# thermal_monitoring is full | degraded | off; any mismatch (including full vs
+# degraded) is a gate violation — different observability is not comparable.
 REQUIRED_EQUAL_FIELDS: tuple[str, ...] = (
     "prompt_dataset_hash",
     "hardware_profile",
     "metrics_schema_version",
     "schema_version",
     "engine_interface_version",
+    "thermal_monitoring",
 )
 
 # HLD: n<2 valid iterations → no distribution; gate rejects comparison.
@@ -49,14 +52,6 @@ def check_comparable(a: RunMetadata, b: RunMetadata) -> GateResult:
         vb = getattr(b, field_name)
         if va != vb:
             violations.append(f"{field_name}: {va!r} != {vb!r}")
-
-    # Degraded thermal monitoring: allow but caveat; block if one off and one full
-    # when comparing performance (different observability).
-    if a.thermal_monitoring == "off" or b.thermal_monitoring == "off":
-        if a.thermal_monitoring != b.thermal_monitoring:
-            violations.append(
-                f"thermal_monitoring: {a.thermal_monitoring!r} != {b.thermal_monitoring!r}"
-            )
 
     # Chip fingerprint: require same chip model when present
     chip_a = a.hardware_fingerprint.get("chip")

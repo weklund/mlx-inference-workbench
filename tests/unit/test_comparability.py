@@ -53,3 +53,24 @@ def test_chip_mismatch_is_not_comparable():
     b = _meta(hardware_fingerprint={"chip": "Apple M1"})
     r = check_comparable(a, b)
     assert r.comparable is False
+
+
+def test_thermal_monitoring_off_vs_full_is_not_comparable():
+    a, b = _meta(thermal_monitoring="off"), _meta(thermal_monitoring="full")
+    r = check_comparable(a, b)
+    assert r.comparable is False
+    assert any("thermal_monitoring" in v for v in r.violations)
+
+
+def test_thermal_monitoring_full_vs_degraded_is_not_comparable():
+    """Different observability classes must not compare silently."""
+    a, b = _meta(thermal_monitoring="full"), _meta(thermal_monitoring="degraded")
+    r = check_comparable(a, b)
+    assert r.comparable is False
+    assert any("thermal_monitoring" in v for v in r.violations)
+
+
+def test_thermal_monitoring_same_mode_is_comparable():
+    a, b = _meta(thermal_monitoring="degraded"), _meta(thermal_monitoring="degraded")
+    r = check_comparable(a, b)
+    assert r.comparable is True

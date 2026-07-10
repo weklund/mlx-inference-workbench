@@ -35,15 +35,8 @@ class RunStore:
                 f.write(json.dumps(row) + "\n")
         tmp_iter.replace(iter_path)
 
-        # Summary (atomic)
         summary_path = d / "summary.json"
-        tmp_sum = d / "summary.json.tmp"
-        payload = record.to_summary_dict()
-        # Embed full metric values for compare
-        payload["metrics"] = record.metrics.to_dict()
-        payload["metrics_values"] = _metric_values_payload(record.metrics)
-        tmp_sum.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        tmp_sum.replace(summary_path)
+        _write_summary_atomic(summary_path, record)
 
         # Optional parquet if pyarrow available
         parquet_path = None
@@ -61,18 +54,8 @@ class RunStore:
                 # Fallback note — data already on disk
                 (d / "mlflow_error.txt").write_text(str(e), encoding="utf-8")
 
-        # Rewrite summary with paths
-        summary_path.write_text(
-            json.dumps(
-                record.to_summary_dict()
-                | {
-                    "metrics": record.metrics.to_dict(),
-                    "metrics_values": _metric_values_payload(record.metrics),
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+        # Rewrite summary with paths (parquet / mlflow ids) — also atomic
+        _write_summary_atomic(summary_path, record)
 
         return record
 
@@ -176,6 +159,24 @@ def _metric_values_payload(metrics: MetricSummary) -> dict[str, list[float]]:
         if dist is not None and dist.values:
             out[name] = list(dist.values)
     return out
+
+
+def _summary_payload(record: RunRecord) -> dict[str, Any]:
+    """Build summary.json body: metadata + metrics + raw values for compare."""
+    payload = record.to_summary_dict()
+    payload["metrics"] = record.metrics.to_dict()
+    payload["metrics_values"] = _metric_values_payload(record.metrics)
+    return payload
+
+
+def _write_summary_atomic(summary_path: Path, record: RunRecord) -> None:
+    """Write summary via .json.tmp then os.replace-equivalent Path.replace."""
+    tmp_path = summary_path.with_suffix(summary_path.suffix + ".tmp")
+    tmp_path.write_text(
+        json.dumps(_summary_payload(record), indent=2),
+        encoding="utf-8",
+    )
+    tmp_path.replace(summary_path)
 
 
 def _metadata_from_dict(d: dict[str, Any]) -> RunMetadata:

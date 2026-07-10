@@ -76,3 +76,30 @@ def test_failed_iterations_do_not_count_as_valid_samples():
     assert summary.valid_iterations == 2
     assert summary.tainted_iterations == 1
     assert summary.total_iterations == 3
+
+
+def test_synthesized_timestamps_excluded_from_ttft_and_token_metrics():
+    """Non-stream fabricated timestamps must not pollute TTFT / decode / SITL."""
+    measured = _ok(12.0, [0.012, 0.04, 0.06])
+    synthesized = GenerationResult(
+        status=GenerationStatus.SUCCESS,
+        output_text="x",
+        token_timestamps=[0.02, 0.04, 0.06],
+        ttft_ms=None,
+        total_tokens=3,
+        memory_peak_bytes=1000,
+        thermal_state=ThermalReading(method="test"),
+        e2e_ms=60.0,
+        timestamps_synthesized=True,
+    )
+    summary = summarize_iterations([measured, synthesized], cov_threshold=0.05)
+    assert summary.ttft_ms is not None
+    assert summary.ttft_ms.n == 1
+    assert summary.ttft_ms.mean == 12.0
+    assert summary.decode_tok_s is not None
+    assert summary.decode_tok_s.n == 1
+    assert summary.sitl_ms is not None
+    assert summary.sitl_ms.n == 1
+    # e2e still aggregates both (wall-clock is real on the non-stream path)
+    assert summary.e2e_ms is not None
+    assert summary.e2e_ms.n == 2

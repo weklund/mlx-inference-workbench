@@ -56,3 +56,71 @@ def test_compare_exits_nonzero_when_prompt_corpus_differs(tmp_path: Path):
     # Must not claim a statistical win
     assert "significant_higher" not in result.output
     assert "significant_lower" not in result.output
+
+
+def test_report_missing_run_exits_friendly(tmp_path: Path):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["report", "does-not-exist", "--results-dir", str(tmp_path / "results")],
+    )
+    assert result.exit_code == 1
+    assert "Run not found" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_compare_missing_run_a_exits_friendly(tmp_path: Path):
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "compare",
+            "missing-a",
+            "missing-b",
+            "--results-dir",
+            str(tmp_path / "results"),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Run not found" in result.output
+    assert "missing-a" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_compare_missing_run_b_exits_friendly(tmp_path: Path):
+    cfg = load_config(REPO / "configs/experiments/smoke_minimal.yaml")
+    cfg.results_dir = str(tmp_path / "results")
+    cfg.enable_mlflow = False
+    r1 = run_experiment(cfg, repo_root=REPO)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "compare",
+            r1.metadata.run_id,
+            "missing-b",
+            "--results-dir",
+            str(tmp_path / "results"),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Run not found" in result.output
+    assert "missing-b" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_report_invalid_run_exits_friendly(tmp_path: Path):
+    """Corrupt summary.json should not dump a traceback at the CLI boundary."""
+    run_dir = tmp_path / "results" / "bad-run"
+    run_dir.mkdir(parents=True)
+    (run_dir / "summary.json").write_text("{not-valid-json", encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["report", "bad-run", "--results-dir", str(tmp_path / "results")],
+    )
+    assert result.exit_code == 1
+    assert "Failed to load run bad-run" in result.output
+    assert "Traceback" not in result.output

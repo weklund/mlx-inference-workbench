@@ -5,6 +5,7 @@ from __future__ import annotations
 import platform
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -24,17 +25,21 @@ def _sysctl(key: str) -> str | None:
     return None
 
 
-def _git_sha() -> str | None:
+def _git_sha(repo_root: Path | None = None) -> str | None:
+    """Return HEAD for the target repository (cwd=repo_root), not the process cwd."""
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
+        kwargs: dict[str, Any] = {
+            "args": ["git", "rev-parse", "HEAD"],
+            "capture_output": True,
+            "text": True,
+            "timeout": 5,
+            "check": False,
+        }
+        if repo_root is not None:
+            kwargs["cwd"] = str(Path(repo_root).resolve())
+        out = subprocess.run(**kwargs)
         if out.returncode == 0:
-            return out.stdout.strip()
+            return out.stdout.strip() or None
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return None
@@ -70,5 +75,6 @@ def capture_fingerprint(profile_name: str) -> dict[str, Any]:
     }
 
 
-def capture_git_sha() -> str | None:
-    return _git_sha()
+def capture_git_sha(repo_root: Path | None = None) -> str | None:
+    """Capture git HEAD for *repo_root* (project/data root), not process cwd."""
+    return _git_sha(repo_root)

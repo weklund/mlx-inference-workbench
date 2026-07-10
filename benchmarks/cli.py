@@ -19,6 +19,18 @@ def _project_root(ctx: click.Context) -> Path:
     return ctx.obj["project_root"]
 
 
+def _load_run(store, run_id: str):
+    """Load a run; print a friendly error and exit nonzero on failure (no traceback)."""
+    try:
+        return store.load(run_id)
+    except FileNotFoundError as e:
+        console.print(f"[red]Run not found:[/red] {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Failed to load run {run_id}:[/red] {e}")
+        sys.exit(1)
+
+
 @click.group()
 @click.version_option(package_name="mlx-inference-workbench")
 @click.option(
@@ -129,7 +141,7 @@ def report_cmd(ctx: click.Context, run_id: str, results_dir: Path | None) -> Non
 
     root = resolve_results_dir(results_dir, project_root=_project_root(ctx))
     store = RunStore(root, enable_mlflow=False)
-    record = store.load(run_id)
+    record = _load_run(store, run_id)
     console.print_json(
         json.dumps(
             record.to_summary_dict()
@@ -155,8 +167,8 @@ def compare_cmd(
 
     root = resolve_results_dir(results_dir, project_root=_project_root(ctx))
     store = RunStore(root, enable_mlflow=False)
-    a = store.load(run_a)
-    b = store.load(run_b)
+    a = _load_run(store, run_a)
+    b = _load_run(store, run_b)
     result = compare_runs(a, b, metric_name=metric)
     console.print_json(json.dumps(result.to_dict()))
     if not result.comparable:
