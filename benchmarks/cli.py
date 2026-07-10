@@ -10,18 +10,32 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from workbench.paths import ENV_PROJECT_ROOT, resolve_project_root, resolve_results_dir
+
 console = Console()
 
 
-def _repo_root() -> Path:
-    # benchmarks/ is at repo root
-    return Path(__file__).resolve().parent.parent
+def _project_root(ctx: click.Context) -> Path:
+    return ctx.obj["project_root"]
 
 
 @click.group()
 @click.version_option(package_name="mlx-inference-workbench")
-def main() -> None:
+@click.option(
+    "--project-root",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    envvar=ENV_PROJECT_ROOT,
+    help=(
+        "Project/data root for configs, datasets, and results "
+        f"(env: {ENV_PROJECT_ROOT}). Defaults to discovery from cwd, not the install path."
+    ),
+)
+@click.pass_context
+def main(ctx: click.Context, project_root: Path | None) -> None:
     """MLX Inference Workbench — comparable, statistically rigorous local benchmarks."""
+    ctx.ensure_object(dict)
+    ctx.obj["project_root"] = resolve_project_root(explicit=project_root)
 
 
 @main.command("run")
@@ -29,16 +43,18 @@ def main() -> None:
 @click.option(
     "--no-mlflow", is_flag=True, help="Skip MLflow indexing (Parquet/JSON still written)."
 )
-def run_cmd(config_path: Path, no_mlflow: bool) -> None:
+@click.pass_context
+def run_cmd(ctx: click.Context, config_path: Path, no_mlflow: bool) -> None:
     """Run a benchmark from a YAML experiment config."""
     from workbench.config import load_config
     from workbench.orchestrator import OrchestratorError, run_experiment
 
-    cfg = load_config(config_path)
+    root = _project_root(ctx)
+    cfg = load_config(config_path.resolve())
     if no_mlflow:
         cfg.enable_mlflow = False
     try:
-        record = run_experiment(cfg, repo_root=_repo_root())
+        record = run_experiment(cfg, repo_root=root)
     except OrchestratorError as e:
         console.print(f"[red]Orchestrator error:[/red] {e}")
         sys.exit(2)
@@ -47,10 +63,12 @@ def run_cmd(config_path: Path, no_mlflow: bool) -> None:
         sys.exit(1)
 
     m = record.metrics
+    results_path = resolve_results_dir(cfg.results_dir, project_root=root) / record.metadata.run_id
     console.print(f"[green]Run complete[/green] id={record.metadata.run_id}")
     console.print(f"  backend={record.metadata.backend} model={record.metadata.model_name}")
     console.print(
-        f"  quality={m.quality_tag} unstable={m.unstable} valid={m.valid_iterations}/{m.total_iterations}"
+        f"  quality={m.quality_tag} unstable={m.unstable} "
+        f"valid={m.valid_iterations}/{m.total_iterations}"
     )
     if m.decode_tok_s:
         p50 = m.decode_tok_s.percentiles.get("p50", m.decode_tok_s.mean)
@@ -60,7 +78,8 @@ def run_cmd(config_path: Path, no_mlflow: bool) -> None:
     if m.ttft_ms:
         p50 = m.ttft_ms.percentiles.get("p50", m.ttft_ms.mean)
         console.print(f"  ttft_ms p50={p50:.2f}")
-    console.print(f"  results={_repo_root() / cfg.results_dir / record.metadata.run_id}")
+    console.print(f"  project_root={root}")
+    console.print(f"  results={results_path}")
     if record.mlflow_run_id:
         console.print(f"  mlflow_run_id={record.mlflow_run_id}")
 
@@ -70,13 +89,14 @@ def run_cmd(config_path: Path, no_mlflow: bool) -> None:
     "--results-dir",
     type=click.Path(path_type=Path),
     default=None,
-    help="Override results directory (default: benchmarks/results)",
+    help="Override results directory (default: <project-root>/benchmarks/results)",
 )
-def list_cmd(results_dir: Path | None) -> None:
+@click.pass_context
+def list_cmd(ctx: click.Context, results_dir: Path | None) -> None:
     """List local runs (Parquet/JSON store)."""
     from workbench.storage.run_store import RunStore
 
-    root = results_dir or (_repo_root() / "benchmarks" / "results")
+    root = resolve_results_dir(results_dir, project_root=_project_root(ctx))
     store = RunStore(root, enable_mlflow=False)
     rows = store.list_runs()
     if not rows:
@@ -102,11 +122,12 @@ def list_cmd(results_dir: Path | None) -> None:
 @main.command("report")
 @click.argument("run_id")
 @click.option("--results-dir", type=click.Path(path_type=Path), default=None)
-def report_cmd(run_id: str, results_dir: Path | None) -> None:
+@click.pass_context
+def report_cmd(ctx: click.Context, run_id: str, results_dir: Path | None) -> None:
     """Print JSON summary for a run."""
     from workbench.storage.run_store import RunStore
 
-    root = results_dir or (_repo_root() / "benchmarks" / "results")
+    root = resolve_results_dir(results_dir, project_root=_project_root(ctx))
     store = RunStore(root, enable_mlflow=False)
     record = store.load(run_id)
     console.print_json(
@@ -124,12 +145,15 @@ def report_cmd(run_id: str, results_dir: Path | None) -> None:
 @click.argument("run_b")
 @click.option("--metric", default="decode_tok_s", show_default=True)
 @click.option("--results-dir", type=click.Path(path_type=Path), default=None)
-def compare_cmd(run_a: str, run_b: str, metric: str, results_dir: Path | None) -> None:
+@click.pass_context
+def compare_cmd(
+    ctx: click.Context, run_a: str, run_b: str, metric: str, results_dir: Path | None
+) -> None:
     """Compare two runs (comparability gate + statistical test)."""
     from workbench.statistics_compare import compare_runs
     from workbench.storage.run_store import RunStore
 
-    root = results_dir or (_repo_root() / "benchmarks" / "results")
+    root = resolve_results_dir(results_dir, project_root=_project_root(ctx))
     store = RunStore(root, enable_mlflow=False)
     a = store.load(run_a)
     b = store.load(run_b)

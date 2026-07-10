@@ -20,6 +20,7 @@ from workbench.models import (
     RunRecord,
     ThermalReading,
 )
+from workbench.paths import resolve_path
 from workbench.prompts import load_dataset
 from workbench.storage.run_store import RunStore
 from workbench.thermal import build_thermal_sensor, cooldown
@@ -62,15 +63,18 @@ def run_experiment(
     repo_root: Path | None = None,
     engine: Engine | None = None,
 ) -> RunRecord:
-    root = repo_root or Path.cwd()
-    store = RunStore(root / config.results_dir, enable_mlflow=config.enable_mlflow)
+    root = (repo_root or Path.cwd()).resolve()
+    store = RunStore(
+        resolve_path(config.results_dir, root=root),
+        enable_mlflow=config.enable_mlflow,
+    )
     run_id = store.new_run_id()
 
-    # Prompts
-    ds_path = (root / config.benchmark.prompt_dataset).resolve()
+    # Prompts (relative paths resolve against project root, not package install dir)
+    ds_path = resolve_path(config.benchmark.prompt_dataset, root=root)
     checksum = None
     if config.benchmark.prompt_checksum:
-        checksum = (root / config.benchmark.prompt_checksum).resolve()
+        checksum = resolve_path(config.benchmark.prompt_checksum, root=root)
     dataset = load_dataset(ds_path, checksum_path=checksum)
     items = list(dataset.items)
     if config.benchmark.max_prompts is not None:
