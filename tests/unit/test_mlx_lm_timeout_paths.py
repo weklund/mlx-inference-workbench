@@ -1,7 +1,7 @@
-"""mlx-lm warmup/validate must use the shared generate timeout wrapper."""
+"""Timeout helper behavior; mlx-lm must not own timeout policy."""
 
 from workbench.config import ModelConfig
-from workbench.engines.base import GenParams
+from workbench.engines.base import GenParams, iter_warmup_prompts
 from workbench.engines.mlx_lm_engine import MlxLmEngine
 from workbench.models import GenerationResult, GenerationStatus, ThermalReading
 
@@ -19,79 +19,37 @@ def _ok_result(text: str = "ok") -> GenerationResult:
     )
 
 
-def test_warmup_invokes_generate_with_timeout(monkeypatch):
+def test_warmup_iterator_drives_mlx_generate(monkeypatch):
     eng = MlxLmEngine()
     eng._model = object()
     eng._tokenizer = object()
     eng._config = ModelConfig(name="m", quantization="q", backend="mlx-lm")
 
-    calls: list[tuple[str, float | None]] = []
+    calls: list[str] = []
 
-    def fake_timeout(engine, prompt, params):
-        calls.append((prompt, params.timeout_sec))
+    def fake_generate(self, prompt, params):
+        calls.append(prompt)
         return _ok_result()
 
-    monkeypatch.setattr("workbench.engines.mlx_lm_engine.generate_with_timeout", fake_timeout)
+    monkeypatch.setattr(MlxLmEngine, "generate", fake_generate)
     params = GenParams(max_tokens=8, seed=1, timeout_sec=0.5)
-    eng.warmup(["prompt-a", "prompt-b"], n=2, params=params)
+    for p in iter_warmup_prompts(["prompt-a", "prompt-b"], n=2):
+        eng.generate(p, params)
 
-    assert len(calls) == 2  # n=2, first prompt only each round
-    assert all(p == "prompt-a" for p, _ in calls)
-    assert all(t == 0.5 for _, t in calls)
-
-
-def test_validate_correctness_invokes_generate_with_timeout(monkeypatch):
-    eng = MlxLmEngine()
-    eng._model = object()
-    eng._tokenizer = object()
-
-    seen: list[GenParams] = []
-
-    def fake_timeout(engine, prompt, params):
-        seen.append(params)
-        return _ok_result("hello world")
-
-    monkeypatch.setattr("workbench.engines.mlx_lm_engine.generate_with_timeout", fake_timeout)
-    assert eng.validate_correctness("p", reference="", tolerance=0.0) is True
-    assert len(seen) == 1
-    assert seen[0].max_tokens == 64
-    assert seen[0].temperature == 0.0
-    assert seen[0].seed == 42
-    assert seen[0].timeout_sec is not None and seen[0].timeout_sec > 0
+    assert calls == ["prompt-a", "prompt-a"]
 
 
-def test_validate_correctness_timeout_fails_closed(monkeypatch):
-    eng = MlxLmEngine()
-    eng._model = object()
-    eng._tokenizer = object()
-
-    def fake_timeout(engine, prompt, params):
-        return GenerationResult(
-            status=GenerationStatus.TIMEOUT,
-            output_text="",
-            token_timestamps=[],
-            ttft_ms=0.0,
-            total_tokens=0,
-            memory_peak_bytes=0,
-            thermal_state=ThermalReading(method="timeout"),
-            error_message="timeout",
-        )
-
-    monkeypatch.setattr("workbench.engines.mlx_lm_engine.generate_with_timeout", fake_timeout)
-    assert eng.validate_correctness("p", reference="x") is False
-
-
-def test_generate_with_timeout_returns_timeout_status():
+def test_timed_generate_returns_timeout_status():
     import time
 
-    from workbench.engines.timeout import generate_with_timeout
+    from workbench.engines.timeout import timed_generate
 
     class SlowEngine:
         def generate(self, prompt, params):
             time.sleep(1.0)
             return _ok_result()
 
-    result = generate_with_timeout(
+    result = timed_generate(
         SlowEngine(),  # type: ignore[arg-type]
         "p",
         GenParams(max_tokens=4, timeout_sec=0.15),
@@ -100,12 +58,9 @@ def test_generate_with_timeout_returns_timeout_status():
 
 
 def test_timeout_path_does_not_block_on_worker_shutdown():
-    """
-    Hung generate() must not delay the TIMEOUT return (no join on the worker).
-    """
     import time
 
-    from workbench.engines.timeout import generate_with_timeout
+    from workbench.engines.timeout import timed_generate
 
     worker_sleep_s = 1.5
     deadline_s = 0.15
@@ -116,7 +71,7 @@ def test_timeout_path_does_not_block_on_worker_shutdown():
             return _ok_result()
 
     t0 = time.perf_counter()
-    result = generate_with_timeout(
+    result = timed_generate(
         SlowEngine(),  # type: ignore[arg-type]
         "p",
         GenParams(max_tokens=4, timeout_sec=deadline_s),
@@ -124,17 +79,15 @@ def test_timeout_path_does_not_block_on_worker_shutdown():
     elapsed = time.perf_counter() - t0
 
     assert result.status == GenerationStatus.TIMEOUT
-    # Allow some scheduling slack, but must not wait for the full worker sleep.
     assert elapsed < worker_sleep_s * 0.6
     assert elapsed < deadline_s + 0.5
 
 
 def test_timeout_worker_is_daemon():
-    """Daemon workers do not block interpreter/CLI shutdown after TIMEOUT."""
     import threading
     import time
 
-    from workbench.engines.timeout import generate_with_timeout
+    from workbench.engines.timeout import timed_generate
 
     started = threading.Event()
 
@@ -145,7 +98,7 @@ def test_timeout_worker_is_daemon():
             return _ok_result()
 
     before = {t.ident for t in threading.enumerate()}
-    result = generate_with_timeout(
+    result = timed_generate(
         SlowEngine(),  # type: ignore[arg-type]
         "p",
         GenParams(max_tokens=4, timeout_sec=0.1),
@@ -162,15 +115,15 @@ def test_timeout_worker_is_daemon():
     assert all(t.daemon for t in workers)
 
 
-def test_generate_with_timeout_propagates_worker_errors():
-    from workbench.engines.timeout import generate_with_timeout
+def test_timed_generate_propagates_worker_errors():
+    from workbench.engines.timeout import timed_generate
 
     class BoomEngine:
         def generate(self, prompt, params):
             raise RuntimeError("engine boom")
 
     try:
-        generate_with_timeout(
+        timed_generate(
             BoomEngine(),  # type: ignore[arg-type]
             "p",
             GenParams(max_tokens=4, timeout_sec=1.0),
