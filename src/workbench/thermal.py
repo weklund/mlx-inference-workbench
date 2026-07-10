@@ -10,13 +10,19 @@ from workbench.models import ThermalReading
 
 
 class ThermalSensor(Protocol):
+    """Thermal / power observability plug-in used by the orchestrator."""
+
     def mode(self) -> str:
-        """full | degraded | off"""
+        """Return monitoring quality class: full, degraded, or off."""
         ...
 
-    def read(self) -> ThermalReading: ...
+    def read(self) -> ThermalReading:
+        """Sample current thermal/power state (best-effort)."""
+        ...
 
-    def is_throttling(self, reading: ThermalReading) -> bool: ...
+    def is_throttling(self, reading: ThermalReading) -> bool:
+        """Return True if ``reading`` indicates thermal throttling."""
+        ...
 
     def note_duration(self, seconds: float) -> None:
         """Record iteration wall time for anomaly heuristics. Default: no-op."""
@@ -24,17 +30,22 @@ class ThermalSensor(Protocol):
 
 
 class OffThermalSensor:
+    """No thermal monitoring (explicit opt-out)."""
+
     def mode(self) -> str:
+        """Return ``off``."""
         return "off"
 
     def read(self) -> ThermalReading:
+        """Return an empty reading tagged as disabled."""
         return ThermalReading(method="off", notes="thermal monitoring disabled")
 
     def is_throttling(self, reading: ThermalReading) -> bool:
+        """Never treat runs as throttling when monitoring is off."""
         return False
 
     def note_duration(self, seconds: float) -> None:
-        return None
+        """No-op duration sink."""
 
 
 class DegradedThermalSensor:
@@ -44,9 +55,11 @@ class DegradedThermalSensor:
         self._durations: list[float] = []
 
     def mode(self) -> str:
+        """Return ``degraded``."""
         return "degraded"
 
     def read(self) -> ThermalReading:
+        """Return a placeholder reading (no powermetrics)."""
         return ThermalReading(
             method="timing_anomaly",
             thermal_pressure=None,
@@ -54,9 +67,11 @@ class DegradedThermalSensor:
         )
 
     def note_duration(self, seconds: float) -> None:
+        """Append iteration duration for median-based anomaly detection."""
         self._durations.append(seconds)
 
     def is_throttling(self, reading: ThermalReading) -> bool:
+        """Flag sudden >2x slowdown vs recent median duration."""
         if len(self._durations) < 3:
             return False
         median = sorted(self._durations)[len(self._durations) // 2]
@@ -65,13 +80,17 @@ class DegradedThermalSensor:
 
 
 class PowermetricsThermalSensor:
+    """Sample via macOS ``powermetrics`` (may require privileges)."""
+
     def __init__(self, sample_sec: float = 0.5) -> None:
         self._sample_sec = sample_sec
 
     def mode(self) -> str:
+        """Return ``full``."""
         return "full"
 
     def read(self) -> ThermalReading:
+        """Invoke powermetrics once and parse thermal pressure / power."""
         # Lightweight sample; may require sudo on some macOS versions
         try:
             proc = subprocess.run(
@@ -112,12 +131,13 @@ class PowermetricsThermalSensor:
             return ThermalReading(method="powermetrics_failed", notes=str(e))
 
     def is_throttling(self, reading: ThermalReading) -> bool:
+        """True when thermal pressure is present and not nominal/normal."""
         if not reading.thermal_pressure:
             return False
         return reading.thermal_pressure.lower() not in {"nominal", "normal", "0"}
 
     def note_duration(self, seconds: float) -> None:
-        return None
+        """No-op; full mode uses powermetrics, not duration heuristics."""
 
 
 def _parse_power_mw(text: str, label: str) -> float | None:
@@ -132,6 +152,12 @@ def _parse_power_mw(text: str, label: str) -> float | None:
 
 
 def build_thermal_sensor(monitor: bool) -> ThermalSensor:
+    """Choose off / full / degraded based on config and probe success.
+
+    Args:
+        monitor: When False, returns OffThermalSensor. When True, probes
+            powermetrics and falls back to DegradedThermalSensor.
+    """
     if not monitor:
         return OffThermalSensor()
     # Probe once
@@ -143,5 +169,6 @@ def build_thermal_sensor(monitor: bool) -> ThermalSensor:
 
 
 def cooldown(seconds: float) -> None:
+    """Sleep between runs when ``seconds`` is positive."""
     if seconds > 0:
         time.sleep(seconds)

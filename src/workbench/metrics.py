@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import math
-from typing import Sequence
 
 import numpy as np
 
@@ -32,7 +32,7 @@ def compute_distribution(
 
     # Trimmed mean: drop top trim_top_fraction (tm99 → drop top 1%)
     if n >= 2 and trim_top_fraction > 0:
-        k = max(0, int(math.floor(n * trim_top_fraction)))
+        k = max(0, math.floor(n * trim_top_fraction))
         if k > 0 and k < n:
             trimmed = np.sort(arr)[: n - k]
             trimmed_mean = float(np.mean(trimmed))
@@ -106,9 +106,7 @@ def summarize_iterations(
     valid = [r for r in iterations if r.status == GenerationStatus.SUCCESS]
     tainted = total - len(valid)
 
-    if len(valid) == 0:
-        quality = "insufficient_data"
-    elif len(valid) == 1:
+    if len(valid) == 0 or len(valid) == 1:
         quality = "insufficient_data"
     elif len(valid) < min_full_confidence:
         quality = "low_confidence"
@@ -129,9 +127,9 @@ def summarize_iterations(
 
     # Unstable if primary throughput CoV exceeds threshold (need n>=2)
     unstable = False
-    if decode is not None and decode.n >= 2 and decode.cov > cov_threshold:
-        unstable = True
-    elif ttft is not None and ttft.n >= 2 and decode is None and ttft.cov > cov_threshold:
+    if (decode is not None and decode.n >= 2 and decode.cov > cov_threshold) or (
+        ttft is not None and ttft.n >= 2 and decode is None and ttft.cov > cov_threshold
+    ):
         unstable = True
 
     return MetricSummary(

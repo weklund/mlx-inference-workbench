@@ -13,12 +13,12 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import date
 import json
+from pathlib import Path
 import shutil
 import subprocess
 import sys
-from datetime import date
-from pathlib import Path
 
 import click
 import yaml

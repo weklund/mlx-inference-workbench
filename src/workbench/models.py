@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
-
 
 METRICS_SCHEMA_VERSION = "1.0"
 ENGINE_INTERFACE_VERSION = "1.0"
@@ -22,7 +21,9 @@ DISTRIBUTION_METRIC_NAMES: tuple[str, ...] = (
 )
 
 
-class GenerationStatus(str, Enum):
+class GenerationStatus(StrEnum):
+    """Terminal status for a single generation attempt."""
+
     SUCCESS = "success"
     TIMEOUT = "timeout"
     THERMAL_TAINTED = "tainted"
@@ -41,6 +42,7 @@ class ThermalReading:
     notes: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-friendly dict."""
         return asdict(self)
 
 
@@ -63,16 +65,19 @@ class GenerationResult:
     error_message: str | None = None
 
     def __post_init__(self) -> None:
-        if self.status == GenerationStatus.SUCCESS and self.token_timestamps:
-            # Streamed path: per-token times must align with token count.
-            # E2e-only (non-stream) may leave token_timestamps empty.
-            if len(self.token_timestamps) != self.total_tokens:
-                raise ValueError(
-                    f"token_timestamps length {len(self.token_timestamps)} "
-                    f"!= total_tokens {self.total_tokens}"
-                )
+        """Validate stream-path timestamp alignment (e2e-only may leave empty)."""
+        if (
+            self.status == GenerationStatus.SUCCESS
+            and self.token_timestamps
+            and len(self.token_timestamps) != self.total_tokens
+        ):
+            raise ValueError(
+                f"token_timestamps length {len(self.token_timestamps)} "
+                f"!= total_tokens {self.total_tokens}"
+            )
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize including enum values (not Enum members)."""
         d = asdict(self)
         d["status"] = self.status.value
         return d
@@ -91,6 +96,7 @@ class DistributionStats:
     values: tuple[float, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize stats; omits raw ``values`` (storage may attach separately)."""
         return {
             "n": self.n,
             "mean": self.mean,
@@ -120,6 +126,8 @@ class MetricSummary:
     metrics_schema_version: str = METRICS_SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize all distribution metrics and quality tags."""
+
         def maybe(d: DistributionStats | None) -> dict[str, Any] | None:
             return d.to_dict() if d is not None else None
 
@@ -164,6 +172,7 @@ class RunMetadata:
     notes: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize metadata for summary.json / comparability."""
         return asdict(self)
 
 
@@ -178,6 +187,7 @@ class RunRecord:
     mlflow_run_id: str | None = None
 
     def to_summary_dict(self) -> dict[str, Any]:
+        """Compact summary without full iteration payloads."""
         return {
             "metadata": self.metadata.to_dict(),
             "metrics": self.metrics.to_dict(),

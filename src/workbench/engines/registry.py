@@ -10,10 +10,22 @@ _REGISTRY: dict[str, Callable[[], Engine]] = {}
 
 
 def register_engine(name: str, factory: Callable[[], Engine]) -> None:
+    """Register a backend factory under ``name`` (overwrites existing)."""
     _REGISTRY[name] = factory
 
 
 def create_engine(name: str) -> Engine:
+    """Instantiate a registered engine; loads built-ins on first miss.
+
+    Args:
+        name: Backend key from experiment config (e.g. ``mlx-lm``).
+
+    Returns:
+        Fresh Engine instance.
+
+    Raises:
+        KeyError: Unknown backend name.
+    """
     if name not in _REGISTRY:
         # lazy import built-ins
         _ensure_builtins()

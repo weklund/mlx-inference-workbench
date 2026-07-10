@@ -8,7 +8,6 @@ from typing import Any
 
 import yaml
 
-
 SUPPORTED_SCHEMA_VERSIONS = frozenset({"1.0"})
 
 # Explicit string forms only — never use bool(value) (bool("false") is True).
@@ -41,6 +40,8 @@ def _parse_bool(value: Any, *, field: str) -> bool:
 
 @dataclass
 class ModelConfig:
+    """Model identity and generation limits for one experiment."""
+
     name: str
     quantization: str
     backend: str
@@ -50,6 +51,8 @@ class ModelConfig:
 
 @dataclass
 class BenchmarkConfig:
+    """Timing loop, dataset, thermal, and correctness gate settings."""
+
     warmup_iterations: int = 2
     timed_iterations: int = 5
     per_iteration_timeout_sec: float = 300.0
@@ -66,6 +69,8 @@ class BenchmarkConfig:
 
 @dataclass
 class MetricsConfig:
+    """Which distribution summaries to compute and CoV unstable threshold."""
+
     report_percentiles: list[int] = field(default_factory=lambda: [50, 90, 95, 99])
     report_trimmed_mean: bool = True
     report_std: bool = True
@@ -74,6 +79,8 @@ class MetricsConfig:
 
 @dataclass
 class ReproducibilityConfig:
+    """Seed and environment capture flags for reproducibility."""
+
     random_seed: int = 42
     record_git_commit: bool = True
     record_env_versions: bool = True
@@ -81,6 +88,8 @@ class ReproducibilityConfig:
 
 @dataclass
 class ExperimentConfig:
+    """Fully parsed experiment YAML (schema 1.0)."""
+
     schema_version: str
     name: str
     description: str
@@ -95,6 +104,18 @@ class ExperimentConfig:
 
     @staticmethod
     def from_dict(data: dict[str, Any], *, source_path: Path | None = None) -> ExperimentConfig:
+        """Build config from a loaded YAML/JSON mapping.
+
+        Args:
+            data: Root mapping from the experiment file.
+            source_path: Optional path recorded for provenance.
+
+        Returns:
+            Validated ExperimentConfig.
+
+        Raises:
+            ValueError: Unsupported schema or invalid field types.
+        """
         schema = str(data.get("schema_version", ""))
         if schema not in SUPPORTED_SCHEMA_VERSIONS:
             raise ValueError(
@@ -175,9 +196,21 @@ class ExperimentConfig:
 
 
 def load_config(path: Path) -> ExperimentConfig:
+    """Load and validate an experiment YAML file.
+
+    Args:
+        path: Path to the YAML experiment config.
+
+    Returns:
+        Parsed ExperimentConfig.
+
+    Raises:
+        TypeError: If the YAML root is not a mapping.
+        ValueError: If schema or fields are invalid.
+    """
     path = path.resolve()
     with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
-        raise ValueError(f"Config root must be a mapping: {path}")
+        raise TypeError(f"Config root must be a mapping: {path}")
     return ExperimentConfig.from_dict(data, source_path=path)

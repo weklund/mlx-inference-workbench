@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import platform
 import subprocess
 import sys
-from pathlib import Path
 from typing import Any
 
 
@@ -109,6 +109,14 @@ def library_versions() -> dict[str, str]:
 
 
 def capture_fingerprint(profile_name: str) -> dict[str, Any]:
+    """Capture host identity fields for run metadata / comparability.
+
+    Args:
+        profile_name: Hardware profile id from experiment config.
+
+    Returns:
+        Dict with chip, memory, OS, and profile name.
+    """
     mem = _sysctl("hw.memsize")
     chip = _sysctl("machdep.cpu.brand_string") or _sysctl("hw.model")
     # Apple Silicon machine
