@@ -20,9 +20,31 @@ RESULTS_FILE = Path(__file__).parent.parent / "docs" / "spikes" / "005_thermal_d
 COV_THRESHOLD = 5.0
 
 
+def _is_protocol_run(r: dict) -> bool:
+    """AC + powermetrics + not explicitly excluded from the official gate."""
+    if r.get("excluded_from_protocol_gate") is True:
+        return False
+    if r.get("cohort") == "exploratory":
+        return False
+    return (
+        r.get("power_source") == "ac"
+        and r.get("thermal_before", {}).get("method") == "powermetrics"
+    )
+
+
+def _cov_pct(rates: list[float]) -> tuple[float, float, float]:
+    arr = np.asarray(rates, dtype=float)
+    mean = float(np.mean(arr))
+    std = float(np.std(arr))
+    cov = (std / mean) * 100 if mean > 0 else float("inf")
+    return mean, std, cov
+
+
 @click.command()
 @click.option(
-    "--valid-only", is_flag=True, help="Exclude battery runs and runs without thermal data"
+    "--valid-only",
+    is_flag=True,
+    help="Protocol gate only: AC + powermetrics; drop exploratory/battery rows",
 )
 def main(valid_only: bool):
     """Analyze thermal reproducibility validation data."""
@@ -30,30 +52,28 @@ def main(valid_only: bool):
         click.echo(f"No data found at {RESULTS_FILE}. Run thermal_validation.py first.")
         raise SystemExit(1)
 
-    records = []
+    all_records = []
     with open(RESULTS_FILE) as f:
         for line in f:
             line = line.strip()
             if line:
-                records.append(json.loads(line))
+                all_records.append(json.loads(line))
 
-    if not records:
+    if not all_records:
         click.echo("No records found.")
         raise SystemExit(1)
 
-    if valid_only:
-        records = [
-            r
-            for r in records
-            if r.get("power_source") == "ac"
-            and r.get("thermal_before", {}).get("method") == "powermetrics"
-        ]
-        if not records:
-            click.echo("No valid records after filtering. Need AC + thermal data.")
-            raise SystemExit(1)
+    protocol = [r for r in all_records if _is_protocol_run(r)]
+    exploratory = [r for r in all_records if r not in protocol]
+
+    records = protocol if valid_only else all_records
+    if not records:
+        click.echo("No valid records after filtering. Need AC + thermal data.")
+        raise SystemExit(1)
 
     click.echo("Phase 0.5: Thermal Reproducibility Analysis")
-    click.echo(f"  Total runs: {len(records)}")
+    click.echo(f"  Total rows in file: {len(all_records)}")
+    click.echo(f"  Analyzing: {len(records)} ({'protocol only' if valid_only else 'all cohorts'})")
     click.echo(f"  Model: {records[0].get('model_id', 'unknown')}")
     click.echo()
 
@@ -154,25 +174,34 @@ def main(valid_only: bool):
         )
         click.echo()
 
-    # Data quality summary
-    valid_records = [
-        r
-        for r in records
-        if r.get("power_source") == "ac"
-        and r.get("thermal_before", {}).get("method") == "powermetrics"
-    ]
-    invalid_records = [r for r in records if r not in valid_records]
-    click.echo("DATA QUALITY")
-    click.echo(f"  Valid runs (AC + thermal):   {len(valid_records)}")
-    click.echo(f"  Invalid runs (excluded):     {len(invalid_records)}")
-    if invalid_records:
-        reasons = set()
-        for r in invalid_records:
+    # Cohort summary (always from full file so exploratories stay visible)
+    click.echo("DATA COHORTS")
+    click.echo(f"  Protocol (AC + powermetrics): {len(protocol)}")
+    if protocol:
+        m, s, c = _cov_pct([r["tok_per_sec"] for r in protocol])
+        click.echo(f"    mean={m:.2f} tok/s  CoV={c:.2f}%  → gate uses this with --valid-only")
+    click.echo(f"  Exploratory / non-protocol:  {len(exploratory)}")
+    if exploratory:
+        m, s, c = _cov_pct([r["tok_per_sec"] for r in exploratory])
+        click.echo(f"    mean={m:.2f} tok/s  CoV={c:.2f}%  (stability under different inputs)")
+        reasons: set[str] = set()
+        for r in exploratory:
+            for reason in r.get("exclusion_reasons") or []:
+                reasons.add(str(reason))
             if r.get("power_source") != "ac":
                 reasons.add("battery")
             if r.get("thermal_before", {}).get("method") != "powermetrics":
                 reasons.add("no thermal data")
-        click.echo(f"  Exclusion reasons: {', '.join(sorted(reasons))}")
+        if reasons:
+            click.echo(f"    tags/reasons: {', '.join(sorted(reasons))}")
+        # Per-session exploratory CoV (e.g. battery evening still tight)
+        exp_sessions: dict[str, list[float]] = {}
+        for r in exploratory:
+            key = f"Day {r['day']}, {r['session']}"
+            exp_sessions.setdefault(key, []).append(r["tok_per_sec"])
+        for key in sorted(exp_sessions):
+            m, s, c = _cov_pct(exp_sessions[key])
+            click.echo(f"    {key}: n={len(exp_sessions[key])} mean={m:.2f} CoV={c:.2f}%")
     click.echo()
 
 
