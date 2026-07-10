@@ -76,23 +76,27 @@ class MlxLmEngine(Engine):
             _stream_generate = None
 
         try:
+            stream_iter = None
             if _stream_generate is not None:
+                # TypeError fallback covers call-time API mismatch only
+                # (wrong kwargs / signature). Errors while iterating or
+                # reading chunks must not discard partial output via e2e retry.
                 try:
-                    for response in _stream_generate(
+                    stream_iter = _stream_generate(
                         self._model,
                         self._tokenizer,
                         prompt=prompt,
                         max_tokens=params.max_tokens,
                         sampler=sampler,
-                    ):
-                        pieces.append(response.text)
-                        timestamps.append(time.perf_counter() - start)
-                    output = "".join(pieces)
+                    )
                 except TypeError:
-                    # Signature / return-shape mismatch with this mlx-lm version.
-                    pieces.clear()
-                    timestamps.clear()
-                    output = None
+                    stream_iter = None
+
+            if stream_iter is not None:
+                for response in stream_iter:
+                    pieces.append(response.text)
+                    timestamps.append(time.perf_counter() - start)
+                output = "".join(pieces)
 
             if output is None:
                 output = mlx_generate(
