@@ -1,6 +1,6 @@
 [project]
 name = "mlx-inference-workbench"
-version = "0.1.2"
+version = "0.1.3"
 description = "Personal workbench for optimizing LLM text inference on Apple Silicon with custom Metal kernels"
 requires-python = ">=3.11"
 dependencies = [
