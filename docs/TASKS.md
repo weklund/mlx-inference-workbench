@@ -17,7 +17,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 | 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | **Done** |
 | 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + provisional baseline | **Done** (engine + provisional; official → #36) |
 | 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | **Done** |
-| 3 | [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) Official mlx-lm baseline under thermal protocol | **Next (M1)** |
+| 3 | [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) Official mlx-lm baseline under thermal protocol | **Done** (run `e46a28d62dee`; see `experiments/01_baseline_m5max/README.md`) |
 | 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | **Partial** (plugin + smoke on main; official compare still open) |
 | 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup (M2) |
 | 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10)–[#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP wave | Experiment (M2; after engines + #36) |
@@ -62,7 +62,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Write thermal reproducibility report with validated methodology
 - [x] Update HLD §22 with empirical findings
 - [x] Close GitHub issue #3 after report on `main`
-- [ ] Official baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36)
+- [x] Official baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) (`e46a28d62dee`)
 
 ---
 
@@ -71,7 +71,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 > **Status (2026-07-10):** MVP harness **shipped** on `main` (audit #24).  
 > Evidence: PRs #16, #18, #19, #25–#27, #29. Epic issue [#5](https://github.com/weklund/mlx-inference-workbench/issues/5).  
 > Thermal gate **#3 closed**. Dataset #6, ceilings #8, mlx-lm plugin #7 (provisional) done.  
-> Remaining M1 residual: **official** baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36).
+> Official baseline under protocol: **done** → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) / run `e46a28d62dee`.
 
 ### Core Infrastructure
 - [x] Implement Orchestrator (Python CLI with Click)
@@ -139,7 +139,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Per-iteration timeout (`per_iteration_timeout_sec`) via orchestrator timed_generate
 - [x] Provisional baseline config: `configs/experiments/baseline_mlx_lm.yaml` + tiny smoke
 - [x] First provisional measured run `9f8c7f967277` + fill `experiments/01_baseline_m5max/README.md` results table
-- [ ] Official baseline under closed thermal methodology → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36)
+- [x] Official baseline under closed thermal methodology → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) (`e46a28d62dee`, thermal `full`)
 
 ### Experiment Config
 - [x] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)

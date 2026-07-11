@@ -1,10 +1,11 @@
 schema_version: "1.0"
 
 experiment:
-  name: "provisional-baseline-mlx-lm-qwen3-8b-4bit"
+  name: "official-baseline-mlx-lm-qwen3-8b-4bit"
   description: >
-    Provisional Phase 1 mlx-lm baseline on agentic_coding_v1 (capped prompts).
-    Not official until thermal gate #3 passes — see experiments/01_baseline_m5max/README.md.
+    Official Phase 1 mlx-lm baseline on agentic_coding_v1 (capped prompts)
+    under Phase 0.5 thermal protocol (#3 report; exclusive session, AC,
+    high performance, powermetrics). See experiments/01_baseline_m5max/README.md.
     Raw completion prompts (no chat template). temp=0, seed=42.
 
 hardware:

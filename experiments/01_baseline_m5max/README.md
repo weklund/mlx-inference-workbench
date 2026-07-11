@@ -5,12 +5,11 @@
 | Item | State |
 |------|--------|
 | Harness + stub path | Shipped (`main`) |
-| mlx-lm engine plugin | Shipped (`MlxLmEngine`) — seed + MLX peak memory |
+| mlx-lm engine plugin | Shipped (`MlxLmEngine`) |
 | Prompt corpus | `datasets/agentic_coding_v1.jsonl` (#6) |
-| **Official** baseline numbers | **Blocked** on thermal hard gate [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) |
-| **Provisional** baseline config | `configs/experiments/baseline_mlx_lm.yaml` |
-
-Any run logged before #3 closes is **provisional**: useful for harness validation and relative engine bring-up, not for claiming “Phase 1 official baseline.”
+| Thermal gate [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) | **Closed** — [report](../../docs/spikes/005_thermal_reproducibility.md) (protocol CoV 2.57%) |
+| **Official** baseline | **`e46a28d62dee`** (see below) — issue [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) |
+| Config | `configs/experiments/baseline_mlx_lm.yaml` |
 
 ## Hypothesis
 
@@ -25,31 +24,31 @@ All backends share:
 - `GenerationResult` → metrics → Parquet/MLflow
 - Comparability gate before statistical compare
 
-Only the **engine plugin** changes. mlx-lm is the first system under test, not a one-off measurement path.
+Only the **engine plugin** changes.
 
 ### Measurement notes (mlx-lm v1)
 
-- **Prompts:** raw completion text (optional `system_prompt` prepend). No automatic chat template (templates would change prefill and break silent comparability).
-- **Sampling:** baseline uses `temperature=0`, `random_seed=42`; engine calls `mx.random.seed` per generate.
-- **TTFT / decode tok/s:** from `stream_generate` wall-clock segment timestamps when available; e2e-only path leaves TTFT null (never fabricated).
-- **Memory:** `mx.get_peak_memory()` after `reset_peak_memory` at generate start (not process RSS).
-- **Timestamps:** stream yields are detokenizer segments (usually ~1 token); decode tok/s is segment-based.
+- **Prompts:** raw completion text (optional `system_prompt` prepend). No automatic chat template.
+- **Sampling:** `temperature=0`, `random_seed=42`; engine calls `mx.random.seed` per generate.
+- **TTFT / decode tok/s:** from `stream_generate` wall-clock segment timestamps when available.
+- **Memory:** `mx.get_peak_memory()` after `reset_peak_memory` at generate start.
+- **Official thermal protocol:** exclusive session, AC, high performance, powermetrics (`thermal_monitoring=full` when passwordless sudo is configured), 30 s cooldown — see [005 thermal report](../../docs/spikes/005_thermal_reproducibility.md).
 
 ## Configs
 
 | Config | Purpose |
 |--------|---------|
-| `configs/experiments/smoke_mlx_lm_tiny.yaml` | Tiny real Metal smoke (`Qwen3-0.6B-4bit`, smoke dataset) |
-| `configs/experiments/baseline_mlx_lm.yaml` | Provisional baseline (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, max_prompts=8) |
+| `configs/experiments/smoke_mlx_lm_tiny.yaml` | Tiny real Metal smoke (`Qwen3-0.6B-4bit`) |
+| `configs/experiments/baseline_mlx_lm.yaml` | Official-class baseline (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, max_prompts=8) |
 
 ```bash
-make smoke-mlx-tiny          # fast real-weights check
-make baseline-mlx-lm         # provisional baseline (AC power recommended)
+make smoke-mlx-tiny
+make baseline-mlx-lm    # exclusive session recommended
 uv run bench report <run_id>
 uv run bench compare <a> <b>
 ```
 
-## Primary SUT (provisional)
+## Primary SUT
 
 - **Hardware:** MacBook Pro M5 Max, 128 GB (`configs/hardware/m5_max_128gb.yaml`)
 - **Backend:** `mlx-lm`
@@ -57,50 +56,66 @@ uv run bench compare <a> <b>
 - **Workload:** agentic coding v1, first 8 prompts, max_tokens=128, temp=0, seed=42
 - **Policy:** 2 warmup, 5 timed, 30s cooldown, thermal monitor + abort if throttling
 
-## Results — provisional run `9f8c7f967277` (2026-07-10)
+---
 
-Logged on AC power via `make baseline-mlx-lm`. **Not official** until thermal gate #3 closes.
+## Results — **official** run `e46a28d62dee` (2026-07-10)
+
+Logged under Phase 0.5 protocol (exclusive session, AC, high performance, Nominal pressure, GPU idle).  
+Methodology: [`docs/spikes/005_thermal_reproducibility.md`](../../docs/spikes/005_thermal_reproducibility.md).  
+Harness fix: powermetrics probe uses passwordless `sudo -n` when available so `thermal_monitoring=full`.
+
+| Field | Value |
+|-------|--------|
+| run_id | **`e46a28d62dee`** |
+| experiment_name | `official-baseline-mlx-lm-qwen3-8b-4bit` |
+| quality_tag | `full` (5/5 valid, 0 tainted) |
+| unstable | `false` |
+| **thermal_monitoring** | **`full`** |
+| TTFT p50 / p90 (ms) | **159.8** / **~181** (mean 158.6, CoV **4.9%**) |
+| decode tok/s p50 / p90 | **107.54** / **~108.9** (mean 108.23, CoV **1.30%**) |
+| SITL p50 (ms) | **9.30** |
+| e2e_ms p50 | **1330** (mean ~1334, CoV **0.88%**) |
+| memory_peak_bytes mean | **~4.80 GB** |
+| hardware | Apple M5 Max, Mac17,7, 128 GB, macOS 26.5.2 |
+| git_sha | `6c331f7304e0ae82d7cbe4443474118d8e6aec5a` (+ thermal sudo probe on this branch) |
+| mlx / mlx-lm | `0.31.2` / `0.31.3` |
+| prompt hash | `6362fd25…ef22c5` (`agentic_coding_v1`, max_prompts=8) |
+| artifacts | `benchmarks/results/e46a28d62dee/` (local; gitignored raw results) |
+
+```bash
+uv run bench report e46a28d62dee
+```
+
+### Protocol notes
+
+- Preflight: AC, powermode high performance, thermal Nominal, GPU ~idle before run.
+- Decode CoV **1.3%** ≪ 5% unstable flag — consistent with thermal gate findings.
+- TTFT still noisier than decode (expected for short first-token path); CoV ~5% on this official run.
+
+---
+
+## Results — provisional run `9f8c7f967277` (historical)
+
+Earlier harness validation run (**not official**). Kept for history.
 
 | Field | Value |
 |-------|--------|
 | run_id | `9f8c7f967277` |
-| experiment_name | `provisional-baseline-mlx-lm-qwen3-8b-4bit` |
-| quality_tag | `full` (5/5 valid, 0 tainted) |
-| unstable (decode CoV flag) | `false` |
-| TTFT p50 / p90 (ms) | **176.2** / **185.9** (mean 165.5, CoV **18.6%**) |
-| decode tok/s p50 / p90 | **108.35** / **108.59** (mean 107.86, CoV **1.25%**) |
-| SITL p50 (ms) | **9.23** |
-| e2e_ms p50 / p90 | **1345** / **1377** (mean 1343, CoV 2.9%) |
-| memory_peak_bytes mean | **~4.80 GB** (`mx.get_peak_memory`, ≈ 4.797e9) |
-| thermal_monitoring | **`degraded`** (not `full` — powermetrics path unavailable or partial) |
-| hardware | Apple M5 Max, Mac17,7, 128 GB, macOS 26.5.2 |
-| git_sha | `5ab44f26f4df456d8cdaf45e92b265b094e83fe3` (main at run time; local #7 engine changes may be uncommitted) |
-| mlx-lm | `0.31.3` |
-| prompt hash | `6362fd25…ef22c5` (`agentic_coding_v1`, max_prompts=8) |
-| artifacts | `benchmarks/results/9f8c7f967277/` (summary.json, iterations parquet/jsonl) |
+| thermal_monitoring | `degraded` (pre–sudo-n probe) |
+| decode tok/s p50 | ~108.35 (CoV ~1.25%) |
+| quality_tag | `full` |
 
-```bash
-uv run bench report 9f8c7f967277
-```
-
-### How to re-record / promote
-
-1. Re-run `make baseline-mlx-lm` after engine PR is on the SHA you want cited.
-2. Paste new `run_id` + distributions into this table (keep historical rows if useful).
-3. Keep `provisional-` prefix until #3 closes; then re-run under validated thermal methodology and mark **official**.
+---
 
 ## Analysis
 
-- **Decode stability looks excellent:** CoV 1.25% ≪ 5% unstable flag — good signal that the harness + cooldown can produce tight decode distributions on this SUT.
-- **TTFT is noisier:** CoV ~18.6%; first timed sample was ~112 ms vs ~170–191 ms later. Stream TTFT **is** measured (not e2e-only). Worth a second look after more warmup or after thermal methodology is locked (#3).
-- **Thermal class is degraded:** Comparability gate will require matching `thermal_monitoring=degraded` on peer runs. Prefer getting `full` thermal before promoting to official baseline.
-- **No thermal taints** on this run (0/5).
-- **Memory** ~4.8 GB peak for Qwen3-8B-4bit is plausible; method is MLX allocator peak, not process RSS.
-- **MLflow** `mlflow_run_id` is null in summary despite `enable_mlflow: true` — investigate if local MLflow tracking is off; Parquet/JSON remain source of truth.
+- **Official decode stability is excellent** (CoV ~1.3%).
+- **Prefer `e46a28d62dee` for compares** so peers match `thermal_monitoring=full` (comparability gate treats full vs degraded as incompatible).
+- Full corpus: remove `max_prompts` when ready for a longer official sweep.
+- Next: same protocol for MTPLX (#9 compare arm) and other backends.
 
 ## Next steps
 
-1. Close or document [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) thermal methodology.
-2. Full corpus run (remove `max_prompts` in baseline config).
-3. Same config shape for MTPLX / llama.cpp engines (#9, #15) → `bench compare` against this run_id family (same prompt hash + hardware profile).
-4. Roofline ceilings [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) for bandwidth % claims.
+1. Close [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) when this note + config land on `main`.
+2. Optional full 24-prompt official re-run (drop `max_prompts`).
+3. MTPLX / llama.cpp under same protocol → `bench compare` vs `e46a28d62dee` (same prompt hash + hardware + thermal class).

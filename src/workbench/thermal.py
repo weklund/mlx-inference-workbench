@@ -90,43 +90,66 @@ class PowermetricsThermalSensor:
         return "full"
 
     def read(self) -> ThermalReading:
-        """Invoke powermetrics once and parse thermal pressure / power."""
-        # Lightweight sample; may require sudo on some macOS versions
+        """Invoke powermetrics once and parse thermal pressure / power.
+
+        Prefers passwordless ``sudo -n`` (lab hosts) so samples include
+        thermal pressure; falls back to unprivileged powermetrics, then fails
+        closed to ``powermetrics_failed`` for degraded sensor selection.
+        """
+        interval_ms = str(max(1, int(self._sample_sec * 1000)))
+        # Match thermal_validation.py: clear TERMINFO, try sudo -n first.
+        command_candidates = [
+            [
+                "env",
+                "-u",
+                "TERMINFO",
+                "sudo",
+                "-n",
+                "powermetrics",
+                "--samplers",
+                "thermal,cpu_power,gpu_power",
+                "-n",
+                "1",
+                "-i",
+                interval_ms,
+            ],
+            [
+                "powermetrics",
+                "--samplers",
+                "cpu_power,gpu_power",
+                "-n",
+                "1",
+                "-i",
+                interval_ms,
+            ],
+        ]
+        last_err = "powermetrics failed"
         try:
-            proc = subprocess.run(
-                [
-                    "powermetrics",
-                    "--samplers",
-                    "cpu_power,gpu_power",
-                    "-n",
-                    "1",
-                    "-i",
-                    str(int(self._sample_sec * 1000)),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            if proc.returncode != 0:
-                raise RuntimeError(proc.stderr[:200] or "powermetrics failed")
-            cpu_mw = _parse_power_mw(proc.stdout, "CPU Power")
-            gpu_mw = _parse_power_mw(proc.stdout, "GPU Power")
-            combined = None
-            if cpu_mw is not None or gpu_mw is not None:
-                combined = (cpu_mw or 0) + (gpu_mw or 0)
-            pressure = "Nominal"
-            if "Thermal pressure" in proc.stdout:
-                for line in proc.stdout.splitlines():
-                    if "Thermal pressure" in line:
-                        pressure = line.split(":")[-1].strip()
-            return ThermalReading(
-                method="powermetrics",
-                thermal_pressure=pressure,
-                cpu_power_mw=cpu_mw,
-                gpu_power_mw=gpu_mw,
-                combined_power_mw=combined,
-            )
+            for cmd in command_candidates:
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    check=False,
+                )
+                if proc.returncode != 0:
+                    last_err = (proc.stderr or proc.stdout or "powermetrics failed")[:200]
+                    continue
+                cpu_mw = _parse_power_mw(proc.stdout, "CPU Power")
+                gpu_mw = _parse_power_mw(proc.stdout, "GPU Power")
+                combined = None
+                if cpu_mw is not None or gpu_mw is not None:
+                    combined = (cpu_mw or 0) + (gpu_mw or 0)
+                pressure = _parse_thermal_pressure(proc.stdout)
+                return ThermalReading(
+                    method="powermetrics",
+                    thermal_pressure=pressure,
+                    cpu_power_mw=cpu_mw,
+                    gpu_power_mw=gpu_mw,
+                    combined_power_mw=combined,
+                )
+            raise RuntimeError(last_err)
         except (FileNotFoundError, subprocess.TimeoutExpired, RuntimeError) as e:
             return ThermalReading(method="powermetrics_failed", notes=str(e))
 
@@ -149,6 +172,15 @@ def _parse_power_mw(text: str, label: str) -> float | None:
                 if p.replace(".", "", 1).isdigit() and i + 1 < len(parts) and "mW" in parts[i + 1]:
                     return float(p)
     return None
+
+
+def _parse_thermal_pressure(text: str) -> str | None:
+    """Parse pressure from powermetrics thermal sampler output."""
+    for line in text.splitlines():
+        low = line.lower()
+        if ":" in line and ("current pressure level" in low or "thermal pressure" in low):
+            return line.split(":")[-1].strip() or None
+    return "Nominal"
 
 
 def build_thermal_sensor(monitor: bool) -> ThermalSensor:
