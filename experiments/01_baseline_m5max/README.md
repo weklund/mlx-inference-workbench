@@ -39,7 +39,7 @@ Only the **engine plugin** changes.
 | Config | Purpose |
 |--------|---------|
 | `configs/experiments/smoke_mlx_lm_tiny.yaml` | Tiny real Metal smoke (`Qwen3-0.6B-4bit`) |
-| `configs/experiments/baseline_mlx_lm.yaml` | Protocol performance baseline (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, warmup 10, max_prompts=8; correctness deferred) |
+| `configs/experiments/baseline_mlx_lm.yaml` | Protocol performance pilot (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, warmup 10; correctness deferred) |
 
 ```bash
 make smoke-mlx-tiny
@@ -53,8 +53,8 @@ uv run bench compare <a> <b>
 - **Hardware:** MacBook Pro M5 Max, 128 GB (`configs/hardware/m5_max_128gb.yaml`)
 - **Backend:** `mlx-lm`
 - **Model:** `mlx-community/Qwen3-8B-4bit`
-- **Workload:** agentic coding v1, first 8 prompts, max_tokens=128, temp=0, seed=42
-- **Policy:** 2 warmup, 5 timed, 30s cooldown, thermal monitor + abort if throttling
+- **Workload (timed loop):** **five-prompt pilot** — each timed iteration runs **one** prompt (`prompts[i % len(prompts)]`). With `timed_iterations: 5` and `max_prompts: 8`, only the **first five** loaded prompts are measured once each (prompts 6–8 are loaded but unused). max_tokens=128, temp=0, seed=42.
+- **Policy:** warmup 10 (config; run `e46a28d62dee` used 2), 5 timed, 30s cooldown, thermal monitor + abort if throttling
 
 ---
 
@@ -82,7 +82,7 @@ Harness: powermetrics via passwordless `sudo -n` when available → `thermal_mon
 | hardware | Apple M5 Max, Mac17,7, 128 GB, macOS 26.5.2 |
 | git_sha | `6c331f7304e0ae82d7cbe4443474118d8e6aec5a` (+ thermal sudo probe on this branch) |
 | mlx / mlx-lm | `0.31.2` / `0.31.3` |
-| prompt hash | `6362fd25…ef22c5` (`agentic_coding_v1`, max_prompts=8) |
+| prompt hash | `6362fd25…ef22c5` (`agentic_coding_v1`; **5 timed prompts** measured, `max_prompts=8` load cap) |
 | artifacts | `benchmarks/results/e46a28d62dee/` (local; gitignored raw results) |
 
 ```bash

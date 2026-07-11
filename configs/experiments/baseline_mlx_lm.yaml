@@ -29,7 +29,9 @@ benchmark:
   cooldown_between_runs_sec: 30
   monitor_thermal: true
   abort_if_throttling: true
-  # Cap for wall-clock; remove max_prompts for full 24-prompt sweep.
+  # Load cap only. Timed loop is one prompt per iteration (orchestrator), so
+  # timed_iterations: 5 measures five prompts even when max_prompts > 5.
+  # Remove max_prompts (and raise timed_iterations) for a full-corpus pass.
   max_prompts: 8
   # Blocked until dataset rows carry non-empty `reference` (0/24 today).
   require_correctness: false
