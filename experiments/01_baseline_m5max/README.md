@@ -121,4 +121,4 @@ Earlier harness validation run (**not official**). Kept for history.
 
 1. Close [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) when this note + config land on `main`.
 2. Optional full 24-prompt official re-run (drop `max_prompts`).
-3. MTPLX / llama.cpp under same protocol → `bench compare` vs `e46a28d62dee` (same prompt hash + hardware + thermal class).
+3. MTPLX same-model protocol compare is in [`experiments/02_stock_mlx_comparison`](../02_stock_mlx_comparison/README.md) (do **not** treat cross-size vs `e46a28d62dee` as an effect-size claim). llama.cpp still pending.

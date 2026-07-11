@@ -18,7 +18,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 | 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + provisional baseline | **Done** (engine + provisional; official → #36) |
 | 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | **Done** |
 | 3 | [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) Thermal-protocol mlx-lm baseline | **Done** (run `e46a28d62dee`; config `protocol-baseline-…`; correctness deferred) |
-| 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | **Partial** (plugin + smoke on main; official compare still open) |
+| 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | **Done (pending merge)** — plugin + protocol compare note (Qwen3.5-2B) |
 | 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup (M2) |
 | 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10)–[#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP wave | Experiment (M2; after engines + #36) |
 
@@ -185,11 +185,12 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ## Phase 2: Backend Expansion (~1-2 weeks per backend)
 
-- [x] MTPLX engine plugin v1 (load + `generate_mtpk`, e2e-only, `model.mtplx`) — PR #42 / #9 partial
+- [x] MTPLX engine plugin v1 (load + `generate_mtpk`, e2e-only, `model.mtplx`) — PR #42 / #9
   - [x] Speculative metrics mapping (acceptance rate, mean accepted length)
   - [x] Draft depth via `model.mtplx.speculative_depth`
   - [x] Smoke: `make smoke-mtplx-tiny`
-  - [ ] Official mlx-lm vs MTPLX compare under thermal protocol (after #36)
+  - [x] Official mlx-lm vs MTPLX compare under thermal protocol (same-model pair
+        `81aff0e72f89` / `f2f5a38b129d`; note in experiment 02)
 - [ ] Implement llama.cpp engine plugin (v1)
   - [ ] Subprocess management with structured output parsing
   - [ ] Per-iteration timeout with process kill
@@ -197,8 +198,8 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [ ] Implement mlx-vlm text mode engine plugin (v1)
 - [ ] Expand prompt dataset to ~50-100 prompts
 - [ ] Run full baseline comparison: all backends × key models × quantizations
-- [ ] Write experiment 01 README with baseline results
-- [ ] Write experiment 02 README with stock MLX comparison
+- [x] Write experiment 01 README with baseline results
+- [x] Write experiment 02 README with stock MLX comparison (protocol pair; no speedup claim)
 
 ---
 

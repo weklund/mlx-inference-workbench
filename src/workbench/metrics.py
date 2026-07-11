@@ -125,6 +125,12 @@ def summarize_iterations(
     acc_vals = [r.acceptance_rate for r in valid if r.acceptance_rate is not None]
     acc = compute_distribution(acc_vals, percentiles) if acc_vals else None
 
+    # Speculative path drafted but accepted nothing: not a valid performance
+    # conclusion for MTP/speculative gains (overhead without accept). Keep
+    # metrics for diagnosis; demote quality so the comparability gate blocks.
+    if quality != "insufficient_data" and acc is not None and acc.n >= 1 and acc.mean == 0.0:
+        quality = "speculative_no_accept"
+
     # Unstable if primary throughput CoV exceeds threshold (need n>=2)
     unstable = False
     if (decode is not None and decode.n >= 2 and decode.cov > cov_threshold) or (

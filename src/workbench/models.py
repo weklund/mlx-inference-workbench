@@ -147,7 +147,7 @@ class MetricSummary:
     total_iterations: int
     tainted_iterations: int
     unstable: bool
-    quality_tag: str  # full | low_confidence | insufficient_data
+    quality_tag: str  # full | low_confidence | insufficient_data | speculative_no_accept
     metrics_schema_version: str = METRICS_SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:

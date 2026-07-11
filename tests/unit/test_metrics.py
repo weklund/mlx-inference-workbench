@@ -151,3 +151,26 @@ def test_distribution_allowlist_is_single_shared_object():
     assert "DISTRIBUTION_METRIC_NAMES" in rebuild_src
     assert "ttft_ms" not in store_src
     assert "ttft_ms" not in rebuild_src
+
+
+def test_zero_acceptance_rate_demotes_quality_for_performance_claims():
+    """Drafted-but-never-accepted speculative runs are not quality=full."""
+    iters = []
+    for _ in range(5):
+        r = _ok(5.0, [0.01, 0.02, 0.03])
+        r.acceptance_rate = 0.0
+        iters.append(r)
+    summary = summarize_iterations(iters)
+    assert summary.acceptance_rate is not None
+    assert summary.acceptance_rate.mean == 0.0
+    assert summary.quality_tag == "speculative_no_accept"
+
+
+def test_positive_acceptance_keeps_full_quality():
+    iters = []
+    for _ in range(5):
+        r = _ok(5.0, [0.01, 0.02, 0.03])
+        r.acceptance_rate = 0.4
+        iters.append(r)
+    summary = summarize_iterations(iters)
+    assert summary.quality_tag == "full"

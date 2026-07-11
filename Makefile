@@ -13,6 +13,8 @@ AGENTIC_STUB_CONFIG := configs/experiments/agentic_coding_v1_stub.yaml
 SMOKE_MLX_TINY_CONFIG := configs/experiments/smoke_mlx_lm_tiny.yaml
 SMOKE_MTPLX_TINY_CONFIG := configs/experiments/smoke_mtplx_tiny.yaml
 BASELINE_MLX_CONFIG := configs/experiments/baseline_mlx_lm.yaml
+PROTOCOL_COMPARE_MLX_LM_Q35 := configs/experiments/protocol_compare_mlx_lm_qwen35_2b.yaml
+PROTOCOL_COMPARE_MTPLX_Q35 := configs/experiments/protocol_compare_mtplx_qwen35_2b.yaml
 
 # Thermal (override: make thermal-run SESSION=morning DAY=2 RUNS=5)
 SESSION ?=
@@ -21,7 +23,8 @@ RUNS ?= 5
 
 .PHONY: help sync sync-update lint fmt test test-unit test-integration \
 	coverage ci smoke smoke-agentic smoke-mlx-tiny smoke-mtplx-tiny baseline-mlx-lm \
-	bench-list bench-compare bench-report \
+	protocol-compare-mlx-lm-qwen35-2b protocol-compare-mtplx-qwen35-2b \
+	bench-list bench-compare bench-report bench-archive \
 	thermal-run thermal-analyze thermal-analyze-protocol \
 	hardware-ceilings hardware-ceilings-write metal-stream \
 	lint-rust test-rust ci-rust clean
@@ -88,6 +91,12 @@ smoke-mtplx-tiny: ## Real MTPLX smoke (Qwen3.5-0.8B MTP; requires --extra mtplx 
 baseline-mlx-lm: ## Protocol mlx-lm baseline (Qwen3-8B-4bit; exclusive session; warmup 10)
 	$(UV) run bench run $(BASELINE_MLX_CONFIG)
 
+protocol-compare-mlx-lm-qwen35-2b: ## #9 compare arm: mlx-lm Qwen3.5-2B (exclusive + thermal)
+	$(UV) run bench run $(PROTOCOL_COMPARE_MLX_LM_Q35)
+
+protocol-compare-mtplx-qwen35-2b: ## #9 compare arm: MTPLX Qwen3.5-2B depth=4 (exclusive + thermal)
+	$(UV) run bench run $(PROTOCOL_COMPARE_MTPLX_Q35)
+
 bench-list: ## List stored benchmark runs
 	$(UV) run bench list
 
@@ -99,6 +108,13 @@ bench-compare: ## Compare two runs: make bench-compare A=<id> B=<id>
 bench-report: ## Report one run: make bench-report RUN=<id>
 	@test -n "$(RUN)" || (echo "usage: make bench-report RUN=<run_id>" >&2; exit 2)
 	$(UV) run bench report $(RUN)
+
+# RUNS="id1 id2" DEST=experiments/NN_name/artifacts
+bench-archive: ## Archive run(s) into experiment artifacts + SHA256SUMS
+	@test -n "$(RUNS)" || (echo 'usage: make bench-archive RUNS="<id> [id2…]" DEST=experiments/…/artifacts' >&2; exit 2)
+	@test -n "$(DEST)" || (echo 'usage: make bench-archive RUNS="<id> [id2…]" DEST=experiments/…/artifacts' >&2; exit 2)
+	$(UV) run python scripts/archive_run_artifacts.py archive \
+		$(foreach id,$(RUNS),--run-id $(id)) --dest $(DEST)
 
 # --- phase 0.5 thermal -------------------------------------------------------
 
