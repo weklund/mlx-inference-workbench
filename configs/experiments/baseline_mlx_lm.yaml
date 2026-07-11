@@ -1,11 +1,13 @@
 schema_version: "1.0"
 
 experiment:
-  name: "provisional-baseline-mlx-lm-qwen3-8b-4bit"
+  name: "protocol-baseline-mlx-lm-qwen3-8b-4bit"
   description: >
-    Provisional Phase 1 mlx-lm baseline on agentic_coding_v1 (capped prompts).
-    Not official until thermal gate #3 passes — see experiments/01_baseline_m5max/README.md.
-    Raw completion prompts (no chat template). temp=0, seed=42.
+    Thermal-protocol performance baseline on agentic_coding_v1 (capped prompts):
+    exclusive session, AC, high performance, powermetrics (#3). HLD warmup ≥10.
+    Correctness gate OFF — agentic_coding_v1 has no gold reference fields yet;
+    re-enable require_correctness when references exist. See
+    experiments/01_baseline_m5max/README.md. Raw completion prompts; temp=0; seed=42.
 
 hardware:
   profile: "m5_max_128gb"
@@ -18,7 +20,8 @@ model:
   max_tokens: 128
 
 benchmark:
-  warmup_iterations: 2
+  # HLD §10 example: warmup ≥10 for published measurement runs.
+  warmup_iterations: 10
   timed_iterations: 5
   per_iteration_timeout_sec: 300
   prompt_dataset: "datasets/agentic_coding_v1.jsonl"
@@ -26,8 +29,11 @@ benchmark:
   cooldown_between_runs_sec: 30
   monitor_thermal: true
   abort_if_throttling: true
-  # First provisional run: cap for time; remove max_prompts for full 24-prompt sweep.
+  # Load cap only. Timed loop is one prompt per iteration (orchestrator), so
+  # timed_iterations: 5 measures five prompts even when max_prompts > 5.
+  # Remove max_prompts (and raise timed_iterations) for a full-corpus pass.
   max_prompts: 8
+  # Blocked until dataset rows carry non-empty `reference` (0/24 today).
   require_correctness: false
 
 metrics:

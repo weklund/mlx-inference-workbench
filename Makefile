@@ -85,7 +85,7 @@ smoke-mlx-tiny: ## Real mlx-lm smoke (tiny Qwen3 0.6B-4bit; requires Metal + wei
 smoke-mtplx-tiny: ## Real MTPLX smoke (Qwen3.5-0.8B MTP; requires --extra mtplx + Metal)
 	$(UV) run bench run $(SMOKE_MTPLX_TINY_CONFIG)
 
-baseline-mlx-lm: ## Provisional mlx-lm baseline (Qwen3-8B-4bit + agentic_coding_v1; thermal on)
+baseline-mlx-lm: ## Protocol mlx-lm baseline (Qwen3-8B-4bit; exclusive session; warmup 10)
 	$(UV) run bench run $(BASELINE_MLX_CONFIG)
 
 bench-list: ## List stored benchmark runs

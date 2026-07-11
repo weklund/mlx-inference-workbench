@@ -10,6 +10,7 @@ from workbench.thermal import (
     DegradedThermalSensor,
     OffThermalSensor,
     PowermetricsThermalSensor,
+    _parse_thermal_pressure,
     build_thermal_sensor,
 )
 
@@ -48,6 +49,38 @@ def test_degraded_sensor_needs_history_before_flagging():
 def test_build_thermal_sensor_off_when_monitor_disabled():
     s = build_thermal_sensor(monitor=False)
     assert s.mode() == "off"
+
+
+def test_parse_thermal_pressure_extracts_known_lines():
+    assert (
+        _parse_thermal_pressure("Current pressure level: Nominal\nCPU Power: 1 mW\n") == "Nominal"
+    )
+    assert _parse_thermal_pressure(
+        "**** Thermal pressure ****\nCurrent pressure level: Heavy\n"
+    ) == ("Heavy")
+
+
+def test_parse_thermal_pressure_absent_is_none_not_nominal():
+    """Unprivileged cpu/gpu-only samples must not invent Nominal pressure."""
+    power_only = "CPU Power: 1234 mW\nGPU Power: 56 mW\nCombined Power: 1290 mW\n"
+    assert _parse_thermal_pressure(power_only) is None
+
+
+def test_powermetrics_read_fails_closed_without_pressure(monkeypatch):
+    """Successful process exit without pressure → powermetrics_failed, not full."""
+
+    class _Proc:
+        returncode = 0
+        stdout = "CPU Power: 100 mW\nGPU Power: 0 mW\n"
+        stderr = ""
+
+    monkeypatch.setattr(
+        "workbench.thermal.subprocess.run",
+        lambda *_a, **_k: _Proc(),
+    )
+    reading = PowermetricsThermalSensor().read()
+    assert reading.method == "powermetrics_failed"
+    assert reading.thermal_pressure is None
 
 
 def test_all_built_in_sensors_implement_note_duration():
