@@ -66,7 +66,7 @@ Preflight: AC Power, powermode **2**, thermal pressure **Nominal**, GPU idle-ish
 | e2e_ms mean / CoV | 1034 / **0.46** | 4049 / **0.59** |
 | decode_tok_s p50 / CoV | **119.1** / **0.021** | n/a (e2e-only) |
 | ttft_ms p50 / CoV | 181.9 / 0.036 | n/a |
-| acceptance_rate mean | n/a | **0.0** (n=4; drafted path, zero accepts) |
+| acceptance_rate mean | n/a | **0.0** (n=4 non-null samples; 1/5 timed iters had no draft tokens → `acceptance_rate` null, excluded from n; other four drafted with zero accepts) |
 | memory_peak mean | ~3.86 GB | ~4.00 GB |
 | git_sha (at run) | `056cf0e5…` | `056cf0e5…` |
 | mlx / mlx-lm | 0.31.2 / 0.31.3 | 0.31.2 / 0.31.3 |
