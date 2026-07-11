@@ -1,0 +1,114 @@
+{
+  "metadata": {
+    "run_id": "f2f5a38b129d",
+    "experiment_name": "protocol-compare-mtplx-qwen35-2b",
+    "backend": "mtplx",
+    "model_name": "qwen3.5-2b",
+    "quantization": "bf16",
+    "prompt_dataset_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/datasets/agentic_coding_v1.jsonl",
+    "prompt_dataset_hash": "6362fd25eeb1628b5ace5c4e1ae1998412aeabe2cd728e186e31fee598ef22c5",
+    "hardware_profile": "m5_max_128gb",
+    "hardware_fingerprint": {
+      "profile": "m5_max_128gb",
+      "chip": "Apple M5 Max",
+      "hw_model": "Mac17,7",
+      "memsize_bytes": 137438953472,
+      "ncpu": "18",
+      "os": "macOS-26.5.2-arm64-arm-64bit",
+      "machine": "arm64"
+    },
+    "git_sha": "056cf0e592f12acd44f73f9684a347f729762d84",
+    "library_versions": {
+      "python": "3.12.13",
+      "platform": "macOS-26.5.2-arm64-arm-64bit",
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "yaml": "6.0.3",
+      "mlflow": "3.14.0",
+      "mlx": "0.31.2",
+      "mlx_lm": "0.31.3"
+    },
+    "random_seed": 42,
+    "schema_version": "1.0",
+    "metrics_schema_version": "1.0",
+    "engine_interface_version": "1.0",
+    "thermal_monitoring": "full",
+    "config_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/configs/experiments/protocol_compare_mtplx_qwen35_2b.yaml",
+    "notes": null
+  },
+  "metrics": {
+    "metrics_schema_version": "1.0",
+    "ttft_ms": null,
+    "decode_tok_s": null,
+    "sitl_ms": null,
+    "e2e_ms": {
+      "n": 5,
+      "mean": 4048.6719996028114,
+      "std": 2381.8876312565203,
+      "cov": 0.5883133114982374,
+      "trimmed_mean": 4048.6719996028114,
+      "percentiles": {
+        "p50": 4989.837166009238,
+        "p90": 5755.266733211465,
+        "p95": 5975.4052416130435,
+        "p99": 6151.516048334306
+      }
+    },
+    "memory_peak_bytes": {
+      "n": 5,
+      "mean": 3998678257.6,
+      "std": 9617204.57512581,
+      "cov": 0.002405095873079331,
+      "trimmed_mean": 3998678257.6,
+      "percentiles": {
+        "p50": 3998018448.0,
+        "p90": 4007502732.8,
+        "p95": 4010145334.4,
+        "p99": 4012259415.68
+      }
+    },
+    "acceptance_rate": {
+      "n": 4,
+      "mean": 0.0,
+      "std": 0.0,
+      "cov": 0.0,
+      "trimmed_mean": 0.0,
+      "percentiles": {
+        "p50": 0.0,
+        "p90": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      }
+    },
+    "valid_iterations": 5,
+    "total_iterations": 5,
+    "tainted_iterations": 0,
+    "unstable": false,
+    "quality_tag": "full"
+  },
+  "parquet_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/benchmarks/results/f2f5a38b129d/iterations.parquet",
+  "mlflow_run_id": null,
+  "iteration_count": 5,
+  "metrics_values": {
+    "e2e_ms": [
+      37.55491599440575,
+      5094.85120800673,
+      3925.5729579890613,
+      4989.837166009238,
+      6195.543750014622
+    ],
+    "memory_peak_bytes": [
+      3999574928.0,
+      3997281168.0,
+      3998018448.0,
+      3985728808.0,
+      4012787936.0
+    ],
+    "acceptance_rate": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

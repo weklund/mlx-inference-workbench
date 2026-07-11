@@ -71,7 +71,29 @@ Preflight: AC Power, powermode **2**, thermal pressure **Nominal**, GPU idle-ish
 | git_sha (at run) | `056cf0e5…` | `056cf0e5…` |
 | mlx / mlx-lm | 0.31.2 / 0.31.3 | 0.31.2 / 0.31.3 |
 | prompt hash | `6362fd25…ef22c5` | same |
-| artifacts | `benchmarks/results/<run_id>/` (local; gitignored raw) | same |
+| artifacts (local harness cache) | `benchmarks/results/<run_id>/` (gitignored) | same |
+| artifacts (durable, immutable) | see [Durable artifacts](#durable-artifacts) below | same |
+
+### Durable artifacts
+
+Raw `summary.json` + `iterations.parquet` for both runs are committed under
+`experiments/02_stock_mlx_comparison/artifacts/<run_id>/` (git = durable store;
+do not rewrite bytes after publish). Manifest + SHA-256:
+
+| URI (repo-relative) | SHA-256 |
+|---------------------|--------|
+| `experiments/02_stock_mlx_comparison/artifacts/81aff0e72f89/summary.json` | `2a9213465f739219768bd4325ad475031c9e058845738f3023b5c867a334c98a` |
+| `experiments/02_stock_mlx_comparison/artifacts/81aff0e72f89/iterations.parquet` | `de94afee7eb28c07b46c87aaa13d5f39d3a39ef2a87a3bd6a11ca940d89485fb` |
+| `experiments/02_stock_mlx_comparison/artifacts/f2f5a38b129d/summary.json` | `14d2a261460eeeb94a8eadd0656957cabe5b47a0f4d2d3094c7fbf248f32ea3d` |
+| `experiments/02_stock_mlx_comparison/artifacts/f2f5a38b129d/iterations.parquet` | `3331e6338a83b5db30cee75d23cd072764a6307ce7ea49f4053fdd1e63e1d465` |
+
+Checksum file: [`artifacts/SHA256SUMS`](artifacts/SHA256SUMS) — verify with
+`cd experiments/02_stock_mlx_comparison/artifacts && shasum -c SHA256SUMS`.
+
+Recompute stats from Parquet columns `e2e_ms` / `acceptance_rate` (same values
+that feed the e2e mean, Mann–Whitney p≈0.151, Cohen's d≈1.76, and
+acceptance_rate mean 0.0 over non-null samples). Local gitignored
+`benchmarks/results/<run_id>/` is a convenience cache only.
 
 **e2e CoV is high on both arms** because the five-prompt pilot mixes early-EOS (~1 token) and max-length (128 token) generations — absolute e2e is not a stable primary metric for this corpus. Prefer mlx-lm **decode** CoV (~2%) for harness stability stories; for cross-backend claims use e2e with the CI below, or a fixed-length synthetic prompt set later.
 

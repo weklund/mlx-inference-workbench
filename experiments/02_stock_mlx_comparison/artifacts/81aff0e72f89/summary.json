@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "run_id": "81aff0e72f89",
+    "experiment_name": "protocol-compare-mlx-lm-qwen35-2b",
+    "backend": "mlx-lm",
+    "model_name": "qwen3.5-2b",
+    "quantization": "bf16",
+    "prompt_dataset_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/datasets/agentic_coding_v1.jsonl",
+    "prompt_dataset_hash": "6362fd25eeb1628b5ace5c4e1ae1998412aeabe2cd728e186e31fee598ef22c5",
+    "hardware_profile": "m5_max_128gb",
+    "hardware_fingerprint": {
+      "profile": "m5_max_128gb",
+      "chip": "Apple M5 Max",
+      "hw_model": "Mac17,7",
+      "memsize_bytes": 137438953472,
+      "ncpu": "18",
+      "os": "macOS-26.5.2-arm64-arm-64bit",
+      "machine": "arm64"
+    },
+    "git_sha": "056cf0e592f12acd44f73f9684a347f729762d84",
+    "library_versions": {
+      "python": "3.12.13",
+      "platform": "macOS-26.5.2-arm64-arm-64bit",
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "yaml": "6.0.3",
+      "mlflow": "3.14.0",
+      "mlx": "0.31.2",
+      "mlx_lm": "0.31.3"
+    },
+    "random_seed": 42,
+    "schema_version": "1.0",
+    "metrics_schema_version": "1.0",
+    "engine_interface_version": "1.0",
+    "thermal_monitoring": "full",
+    "config_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/configs/experiments/protocol_compare_mlx_lm_qwen35_2b.yaml",
+    "notes": null
+  },
+  "metrics": {
+    "metrics_schema_version": "1.0",
+    "ttft_ms": {
+      "n": 5,
+      "mean": 181.32926660473458,
+      "std": 6.486705028245494,
+      "cov": 0.03577307265233335,
+      "trimmed_mean": 181.32926660473458,
+      "percentiles": {
+        "p50": 181.93245798465796,
+        "p90": 187.05809201928787,
+        "p95": 188.71419202187099,
+        "p99": 190.03907202393748
+      }
+    },
+    "decode_tok_s": {
+      "n": 4,
+      "mean": 119.2437040634866,
+      "std": 2.506389792714678,
+      "cov": 0.02101905347875012,
+      "trimmed_mean": 119.2437040634866,
+      "percentiles": {
+        "p50": 119.11579560497839,
+        "p90": 121.50989101836015,
+        "p95": 121.58735318410177,
+        "p99": 121.64932291669507
+      }
+    },
+    "sitl_ms": {
+      "n": 4,
+      "mean": 8.388965635828116,
+      "std": 0.17626263173846604,
+      "cov": 0.021011247320607995,
+      "trimmed_mean": 8.388965635828116,
+      "percentiles": {
+        "p50": 8.397637472504487,
+        "p90": 8.541179824378489,
+        "p95": 8.541232136542924,
+        "p99": 8.541273986274472
+      }
+    },
+    "e2e_ms": {
+      "n": 5,
+      "mean": 1033.6481752048712,
+      "std": 471.8940111691141,
+      "cov": 0.4565325247883147,
+      "trimmed_mean": 1033.6481752048712,
+      "percentiles": {
+        "p50": 1225.7839579833671,
+        "p90": 1266.0174338030629,
+        "p95": 1266.425175400218,
+        "p99": 1266.751368677942
+      }
+    },
+    "memory_peak_bytes": {
+      "n": 5,
+      "mean": 3860068625.6,
+      "std": 8453589.348578673,
+      "cov": 0.0021900101186062893,
+      "trimmed_mean": 3860068625.6,
+      "percentiles": {
+        "p50": 3858783544.0,
+        "p90": 3868751180.0,
+        "p95": 3870816808.0,
+        "p99": 3872469310.4
+      }
+    },
+    "acceptance_rate": null,
+    "valid_iterations": 5,
+    "total_iterations": 5,
+    "tainted_iterations": 0,
+    "unstable": false,
+    "quality_tag": "full"
+  },
+  "parquet_path": "/Users/weae1504/Projects/open-source/mlx-inference-workbench/benchmarks/results/81aff0e72f89/iterations.parquet",
+  "mlflow_run_id": null,
+  "iteration_count": 5,
+  "metrics_values": {
+    "ttft_ms": [
+      190.3702920244541,
+      180.09537499165162,
+      181.93245798465796,
+      172.15841601137072,
+      182.08979201153852
+    ],
+    "decode_tok_s": [
+      117.08319029839085,
+      121.6648153498434,
+      121.14840091156593,
+      117.07840969414622
+    ],
+    "sitl_ms": [
+      8.540935700944457,
+      8.219303149596135,
+      8.254339244064516,
+      8.541284448707358
+    ],
+    "e2e_ms": [
+      190.3702920244541,
+      1264.7942090115976,
+      1225.7839579833671,
+      1220.4595000075642,
+      1266.832916997373
+    ],
+    "memory_peak_bytes": [
+      3862554296.0,
+      3858783544.0,
+      3855856714.0,
+      3850266138.0,
+      3872882436.0
+    ]
+  }
+}
