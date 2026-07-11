@@ -164,6 +164,7 @@ ignore = [
 "kernels/**" = ["D"]
 # Engine fallbacks intentionally swallow optional Metal/MLX probe failures.
 "src/workbench/engines/mlx_lm_engine.py" = ["BLE001", "S110"]
+"src/workbench/engines/mtplx_engine.py" = ["BLE001", "S110"]
 "src/workbench/thermal.py" = ["S603", "S607", "ARG002", "TRY301"]
 "src/workbench/hardware.py" = ["S603", "S607", "PLW1510"]
 "src/workbench/ceilings.py" = ["S603", "S607", "PLW1510"]

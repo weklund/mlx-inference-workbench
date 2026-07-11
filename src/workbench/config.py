@@ -39,6 +39,17 @@ def _parse_bool(value: Any, *, field: str) -> bool:
 
 
 @dataclass
+class MtplxOptions:
+    """MTPLX-only engine policy (ignored by other backends).
+
+    Nested under ``model.mtplx`` in experiment YAML so shared model identity
+    stays flat while adapter knobs remain namespaced.
+    """
+
+    speculative_depth: int = 4
+
+
+@dataclass
 class ModelConfig:
     """Model identity and generation limits for one experiment."""
 
@@ -47,6 +58,8 @@ class ModelConfig:
     backend: str
     model_id: str | None = None  # HF / mlx-community id when applicable
     max_tokens: int = 128
+    # Present when YAML has model.mtplx; only MtplxEngine should consume it.
+    mtplx: MtplxOptions | None = None
 
 
 @dataclass
@@ -129,12 +142,15 @@ class ExperimentConfig:
         metrics_raw = data.get("metrics") or {}
         repro_raw = data.get("reproducibility") or {}
 
+        backend = str(model_raw["backend"])
+        mtplx_opts = _parse_mtplx_options(model_raw.get("mtplx"), backend=backend)
         model = ModelConfig(
             name=str(model_raw["name"]),
             quantization=str(model_raw.get("quantization", "unknown")),
-            backend=str(model_raw["backend"]),
+            backend=backend,
             model_id=model_raw.get("model_id"),
             max_tokens=int(model_raw.get("max_tokens", 128)),
+            mtplx=mtplx_opts,
         )
         benchmark = BenchmarkConfig(
             warmup_iterations=int(bench_raw.get("warmup_iterations", 2)),
@@ -193,6 +209,41 @@ class ExperimentConfig:
             enable_mlflow=_parse_bool(data.get("enable_mlflow", True), field="enable_mlflow"),
             source_path=source_path,
         )
+
+
+def _parse_mtplx_options(raw: Any, *, backend: str) -> MtplxOptions | None:
+    """Parse optional ``model.mtplx`` block.
+
+    Args:
+        raw: Mapping from YAML, or None if omitted.
+        backend: ``model.backend`` string (used for ownership check).
+
+    Returns:
+        MtplxOptions when the block is present; None when omitted.
+
+    Raises:
+        ValueError: Block present with non-mtplx backend, or invalid fields.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise TypeError(f"model.mtplx must be a mapping; got {type(raw).__name__}")
+
+    backend_norm = backend.strip().lower().replace("_", "-")
+    if backend_norm != "mtplx":
+        raise ValueError(
+            f"model.mtplx is only valid when model.backend is 'mtplx'; got backend={backend!r}"
+        )
+
+    depth = int(raw.get("speculative_depth", 4))
+    if depth < 1:
+        raise ValueError(f"model.mtplx.speculative_depth must be >= 1; got {depth}")
+
+    unknown = set(raw) - {"speculative_depth"}
+    if unknown:
+        raise ValueError(f"model.mtplx has unknown keys: {sorted(unknown)}")
+
+    return MtplxOptions(speculative_depth=depth)
 
 
 def load_config(path: Path) -> ExperimentConfig:

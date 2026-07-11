@@ -62,3 +62,9 @@ def _ensure_builtins() -> None:
         _register_builtin("mlx_lm", MlxLmEngine)
     except ImportError:
         pass
+
+    # Always register the adapter. Optional ``mtplx`` package is handled in
+    # MtplxEngine.load_model(); adapter ImportError should surface here.
+    from workbench.engines.mtplx_engine import MtplxEngine
+
+    _register_builtin("mtplx", MtplxEngine)
