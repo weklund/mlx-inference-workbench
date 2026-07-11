@@ -8,8 +8,8 @@
 | mlx-lm engine plugin | Shipped (`MlxLmEngine`) |
 | Prompt corpus | `datasets/agentic_coding_v1.jsonl` (#6) |
 | Thermal gate [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) | **Closed** — [report](../../docs/spikes/005_thermal_reproducibility.md) (protocol CoV 2.57%) |
-| **Official** baseline | **`e46a28d62dee`** (see below) — issue [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) |
-| Config | `configs/experiments/baseline_mlx_lm.yaml` |
+| **Thermal-protocol performance baseline** | **`e46a28d62dee`** (see below) — issue [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) |
+| Config | `configs/experiments/baseline_mlx_lm.yaml` (`protocol-baseline-…`; warmup 10; correctness off until dataset refs) |
 
 ## Hypothesis
 
@@ -39,7 +39,7 @@ Only the **engine plugin** changes.
 | Config | Purpose |
 |--------|---------|
 | `configs/experiments/smoke_mlx_lm_tiny.yaml` | Tiny real Metal smoke (`Qwen3-0.6B-4bit`) |
-| `configs/experiments/baseline_mlx_lm.yaml` | Official-class baseline (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, max_prompts=8) |
+| `configs/experiments/baseline_mlx_lm.yaml` | Protocol performance baseline (`Qwen3-8B-4bit`, agentic_coding_v1, thermal on, warmup 10, max_prompts=8; correctness deferred) |
 
 ```bash
 make smoke-mlx-tiny
@@ -58,19 +58,22 @@ uv run bench compare <a> <b>
 
 ---
 
-## Results — **official** run `e46a28d62dee` (2026-07-10)
+## Results — thermal-protocol performance run `e46a28d62dee` (2026-07-10)
 
 Logged under Phase 0.5 protocol (exclusive session, AC, high performance, Nominal pressure, GPU idle).  
 Methodology: [`docs/spikes/005_thermal_reproducibility.md`](../../docs/spikes/005_thermal_reproducibility.md).  
-Harness fix: powermetrics probe uses passwordless `sudo -n` when available so `thermal_monitoring=full`.
+Harness: powermetrics via passwordless `sudo -n` when available → `thermal_monitoring=full`.
+
+**Honesty / residual rigor (vs full HLD example config):** this run used **warmup=2** and **require_correctness=false** (dataset has no `reference` fields). Config on this branch is updated to **warmup=10** and an honest `protocol-baseline-…` name; re-run under the new YAML before treating numbers as full HLD-published baseline. Correctness remains off until gold references exist.
 
 | Field | Value |
 |-------|--------|
 | run_id | **`e46a28d62dee`** |
-| experiment_name | `official-baseline-mlx-lm-qwen3-8b-4bit` |
+| experiment_name (at run time) | `official-baseline-mlx-lm-qwen3-8b-4bit` (renamed in config → `protocol-baseline-…`) |
 | quality_tag | `full` (5/5 valid, 0 tainted) |
 | unstable | `false` |
 | **thermal_monitoring** | **`full`** |
+| warmup / correctness (at run) | **2** / **false** (see residual above) |
 | TTFT p50 / p90 (ms) | **159.8** / **~181** (mean 158.6, CoV **4.9%**) |
 | decode tok/s p50 / p90 | **107.54** / **~108.9** (mean 108.23, CoV **1.30%**) |
 | SITL p50 (ms) | **9.30** |
