@@ -1,0 +1,46 @@
+schema_version: "1.0"
+
+experiment:
+  name: "protocol-compare-mlx-lm-qwen35-2b"
+  description: >
+    mlx-lm arm of the MTPLX vs stock compare (#9). Same model/prompts/policy as
+    protocol_compare_mtplx_qwen35_2b.yaml so the Comparability Gate can pass and
+    e2e effect size is meaningful. Exclusive session + thermal protocol (#3).
+    Correctness gate OFF until agentic_coding_v1 has gold references.
+    Prefer same-session pair with the MTPLX arm; compare with --metric e2e_ms
+    (MTPLX v1 is e2e-only).
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "qwen3.5-2b"
+  model_id: "Qwen/Qwen3.5-2B"
+  quantization: "bf16"
+  backend: "mlx-lm"
+  max_tokens: 128
+
+benchmark:
+  warmup_iterations: 10
+  timed_iterations: 5
+  per_iteration_timeout_sec: 300
+  prompt_dataset: "datasets/agentic_coding_v1.jsonl"
+  prompt_checksum: "datasets/agentic_coding_v1.sha256"
+  cooldown_between_runs_sec: 30
+  monitor_thermal: true
+  abort_if_throttling: true
+  # Five-prompt pilot: one prompt per timed iteration (orchestrator).
+  max_prompts: 8
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: true

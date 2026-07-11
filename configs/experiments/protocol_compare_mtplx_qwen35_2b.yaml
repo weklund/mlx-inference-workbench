@@ -1,0 +1,46 @@
+schema_version: "1.0"
+
+experiment:
+  name: "protocol-compare-mtplx-qwen35-2b"
+  description: >
+    MTPLX arm of the stock vs MTP compare (#9). Same model/prompts/policy as
+    protocol_compare_mlx_lm_qwen35_2b.yaml. Requires: uv sync --extra mtplx,
+    Metal, Qwen/Qwen3.5-2B with MTP tensors (mtplx inspect). Exclusive session
+    + thermal protocol (#3). Correctness OFF until dataset refs exist.
+    Speculative depth fixed at 4 for this pilot. Compare with --metric e2e_ms.
+
+hardware:
+  profile: "m5_max_128gb"
+
+model:
+  name: "qwen3.5-2b"
+  model_id: "Qwen/Qwen3.5-2B"
+  quantization: "bf16"
+  backend: "mtplx"
+  max_tokens: 128
+  mtplx:
+    speculative_depth: 4
+
+benchmark:
+  warmup_iterations: 10
+  timed_iterations: 5
+  per_iteration_timeout_sec: 300
+  prompt_dataset: "datasets/agentic_coding_v1.jsonl"
+  prompt_checksum: "datasets/agentic_coding_v1.sha256"
+  cooldown_between_runs_sec: 30
+  monitor_thermal: true
+  abort_if_throttling: true
+  max_prompts: 8
+  require_correctness: false
+
+metrics:
+  report_percentiles: [50, 90, 95, 99]
+  flag_cov_threshold: 0.05
+
+reproducibility:
+  random_seed: 42
+  record_git_commit: true
+  record_env_versions: true
+
+results_dir: "benchmarks/results"
+enable_mlflow: true
