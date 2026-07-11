@@ -24,7 +24,7 @@ RUNS ?= 5
 .PHONY: help sync sync-update lint fmt test test-unit test-integration \
 	coverage ci smoke smoke-agentic smoke-mlx-tiny smoke-mtplx-tiny baseline-mlx-lm \
 	protocol-compare-mlx-lm-qwen35-2b protocol-compare-mtplx-qwen35-2b \
-	bench-list bench-compare bench-report \
+	bench-list bench-compare bench-report bench-archive \
 	thermal-run thermal-analyze thermal-analyze-protocol \
 	hardware-ceilings hardware-ceilings-write metal-stream \
 	lint-rust test-rust ci-rust clean
@@ -108,6 +108,13 @@ bench-compare: ## Compare two runs: make bench-compare A=<id> B=<id>
 bench-report: ## Report one run: make bench-report RUN=<id>
 	@test -n "$(RUN)" || (echo "usage: make bench-report RUN=<run_id>" >&2; exit 2)
 	$(UV) run bench report $(RUN)
+
+# RUNS="id1 id2" DEST=experiments/NN_name/artifacts
+bench-archive: ## Archive run(s) into experiment artifacts + SHA256SUMS
+	@test -n "$(RUNS)" || (echo 'usage: make bench-archive RUNS="<id> [id2…]" DEST=experiments/…/artifacts' >&2; exit 2)
+	@test -n "$(DEST)" || (echo 'usage: make bench-archive RUNS="<id> [id2…]" DEST=experiments/…/artifacts' >&2; exit 2)
+	$(UV) run python scripts/archive_run_artifacts.py archive \
+		$(foreach id,$(RUNS),--run-id $(id)) --dest $(DEST)
 
 # --- phase 0.5 thermal -------------------------------------------------------
 

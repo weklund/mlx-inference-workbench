@@ -78,7 +78,15 @@ Preflight: AC Power, powermode **2**, thermal pressure **Nominal**, GPU idle-ish
 
 Raw `summary.json` + `iterations.parquet` for both runs are committed under
 `experiments/02_stock_mlx_comparison/artifacts/<run_id>/` (git = durable store;
-do not rewrite bytes after publish). Manifest + SHA-256:
+do not rewrite bytes after publish). Produced/verified with the shared script
+(see [`experiments/README.md`](../README.md#durable-artifacts-checksums)):
+
+```bash
+make bench-archive \
+  RUNS="81aff0e72f89 f2f5a38b129d" \
+  DEST=experiments/02_stock_mlx_comparison/artifacts
+# or: uv run python scripts/archive_run_artifacts.py verify --dest experiments/02_stock_mlx_comparison/artifacts
+```
 
 | URI (repo-relative) | SHA-256 |
 |---------------------|--------|
@@ -87,8 +95,7 @@ do not rewrite bytes after publish). Manifest + SHA-256:
 | `experiments/02_stock_mlx_comparison/artifacts/f2f5a38b129d/summary.json` | `14d2a261460eeeb94a8eadd0656957cabe5b47a0f4d2d3094c7fbf248f32ea3d` |
 | `experiments/02_stock_mlx_comparison/artifacts/f2f5a38b129d/iterations.parquet` | `3331e6338a83b5db30cee75d23cd072764a6307ce7ea49f4053fdd1e63e1d465` |
 
-Checksum file: [`artifacts/SHA256SUMS`](artifacts/SHA256SUMS) — verify with
-`cd experiments/02_stock_mlx_comparison/artifacts && shasum -c SHA256SUMS`.
+Checksum file: [`artifacts/SHA256SUMS`](artifacts/SHA256SUMS).
 
 Recompute stats from Parquet columns `e2e_ms` / `acceptance_rate` (same values
 that feed the e2e mean, Mann–Whitney p≈0.151, Cohen's d≈1.76, and
