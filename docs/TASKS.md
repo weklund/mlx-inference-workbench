@@ -1,29 +1,26 @@
 # Task Breakdown — MLX Inference Workbench
 
 > Derived from [HLD.md](HLD.md) | Created: 2026-07-08  
-> GitHub milestone: [Local inference gaps (HLD-scoped)](https://github.com/weklund/mlx-inference-workbench/milestone/1) · Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4)
+> GitHub milestones: [M1 Lab foundation](https://github.com/weklund/mlx-inference-workbench/milestone/1) · [M2 Multi-engine](https://github.com/weklund/mlx-inference-workbench/milestone/2) · Epic [#4](https://github.com/weklund/mlx-inference-workbench/issues/4)
 
 ---
 
 ## GitHub roadmap (gap map × HLD)
 
-Issues below are the **source of truth** for purpose, definition of done, and smoke tests. HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal images, training/distill, DSPy product work, multi-Mac TP/PP, cascade product routing) are **not** in this milestone.
+Issues below are the **source of truth** for purpose, definition of done, and smoke tests. HLD §7 exclusions (continuous batching, multi-user serving, NVIDIA, multimodal images, training/distill, DSPy product work, multi-Mac TP/PP, cascade product routing) are **not** in M1.
 
 | Order | Issue | Role |
 |------:|-------|------|
-| 0 | [#2](https://github.com/weklund/mlx-inference-workbench/issues/2) Phase 0 MTPLX familiarization | Done |
-| 1 | [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) Phase 0.5 Thermal gate | HARD GATE |
-| 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | **Done** (MVP; see issue for residuals) |
-| 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | Setup |
-| 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + baseline | Setup (engine shipped; provisional baseline config; official numbers wait on #3) |
-| 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | Roofline gate (probe + profile + util API) |
-| 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | Setup |
-| 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup |
-| 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10) EXP Prefix cache | Experiment |
-| 5 | [#11](https://github.com/weklund/mlx-inference-workbench/issues/11) EXP Free draft | Experiment |
-| 5 | [#12](https://github.com/weklund/mlx-inference-workbench/issues/12) EXP KV compression | Experiment |
-| 5 | [#13](https://github.com/weklund/mlx-inference-workbench/issues/13) EXP Quant matrix | Experiment |
-| 6 | [#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP Adaptive draft | Experiment |
+| 0 | [#2](https://github.com/weklund/mlx-inference-workbench/issues/2) Phase 0 MTPLX familiarization | **Done** |
+| 1 | [#3](https://github.com/weklund/mlx-inference-workbench/issues/3) Phase 0.5 Thermal gate | **Done** (protocol CoV 2.57%; [report](spikes/005_thermal_reproducibility.md)) |
+| 2 | [#5](https://github.com/weklund/mlx-inference-workbench/issues/5) Phase 1 MVP harness | **Done** (MVP; residuals optional) |
+| 2 | [#6](https://github.com/weklund/mlx-inference-workbench/issues/6) Prompt dataset v1 | **Done** |
+| 3 | [#7](https://github.com/weklund/mlx-inference-workbench/issues/7) mlx-lm engine + provisional baseline | **Done** (engine + provisional; official → #36) |
+| 3 | [#8](https://github.com/weklund/mlx-inference-workbench/issues/8) M5 Max ceilings | **Done** |
+| 3 | [#36](https://github.com/weklund/mlx-inference-workbench/issues/36) Official mlx-lm baseline under thermal protocol | **Next (M1)** |
+| 4 | [#9](https://github.com/weklund/mlx-inference-workbench/issues/9) MTPLX engine | **Partial** (plugin + smoke on main; official compare still open) |
+| 4 | [#15](https://github.com/weklund/mlx-inference-workbench/issues/15) llama.cpp engine | Setup (M2) |
+| 5 | [#10](https://github.com/weklund/mlx-inference-workbench/issues/10)–[#14](https://github.com/weklund/mlx-inference-workbench/issues/14) EXP wave | Experiment (M2; after engines + #36) |
 
 ---
 
@@ -64,7 +61,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] CoV < 5% under protocol (2.57%); exclusive-use + exclude contended sessions
 - [x] Write thermal reproducibility report with validated methodology
 - [x] Update HLD §22 with empirical findings
-- [ ] Close GitHub issue #3 after this report lands on `main`
+- [x] Close GitHub issue #3 after report on `main`
 - [ ] Official baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36)
 
 ---
@@ -73,7 +70,8 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 > **Status (2026-07-10):** MVP harness **shipped** on `main` (audit #24).  
 > Evidence: PRs #16, #18, #19, #25–#27, #29. Epic issue [#5](https://github.com/weklund/mlx-inference-workbench/issues/5).  
-> Not part of harness MVP: official baselines (#3 thermal report, #6 dataset, #7 mlx-lm run, #8 roofline).
+> Thermal gate **#3 closed**. Dataset #6, ceilings #8, mlx-lm plugin #7 (provisional) done.  
+> Remaining M1 residual: **official** baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36).
 
 ### Core Infrastructure
 - [x] Implement Orchestrator (Python CLI with Click)
@@ -141,7 +139,7 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [x] Per-iteration timeout (`per_iteration_timeout_sec`) via orchestrator timed_generate
 - [x] Provisional baseline config: `configs/experiments/baseline_mlx_lm.yaml` + tiny smoke
 - [x] First provisional measured run `9f8c7f967277` + fill `experiments/01_baseline_m5max/README.md` results table
-- [ ] Official baseline after thermal gate [#3](https://github.com/weklund/mlx-inference-workbench/issues/3)
+- [ ] Official baseline under closed thermal methodology → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36)
 
 ### Experiment Config
 - [x] Define config YAML schema (schema_version, experiment, hardware, model, benchmark, metrics, reproducibility)
@@ -177,9 +175,9 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 - [ ] E2E test: Comparability Gate blocks incompatible runs
 
 ### Resolve Open Questions
-- [ ] OQ#1: Can MTPLX be driven programmatically?
-- [ ] OQ#3: Does `powermetrics` require sudo? What's the fallback?
-- [ ] OQ#4: Verify M5 Max specs (see hardware verification above)
+- [x] OQ#1: Can MTPLX be driven programmatically? — **Yes** (`mtplx.load` + `generate_mtpk`; `docs/notes/mtplx-engine.md`)
+- [x] OQ#3: Does `powermetrics` require sudo? — **Yes** on macOS; lab passwordless sudo for protocol; harness degrades / timing fallback without it
+- [x] OQ#4: Verify M5 Max specs — **Done** (#8 / spike 008)
 - [ ] OQ#6: Rust → MLflow integration approach (resolve before Phase 3)
 - [ ] OQ#7: Memory peak comparability methodology
 
@@ -187,9 +185,11 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ## Phase 2: Backend Expansion (~1-2 weeks per backend)
 
-- [ ] Implement MTPLX engine plugin (v1)
-  - [ ] Speculative-specific metrics: acceptance rate, mean accepted length
-  - [ ] Draft depth configuration
+- [x] MTPLX engine plugin v1 (load + `generate_mtpk`, e2e-only, `model.mtplx`) — PR #42 / #9 partial
+  - [x] Speculative metrics mapping (acceptance rate, mean accepted length)
+  - [x] Draft depth via `model.mtplx.speculative_depth`
+  - [x] Smoke: `make smoke-mtplx-tiny`
+  - [ ] Official mlx-lm vs MTPLX compare under thermal protocol (after #36)
 - [ ] Implement llama.cpp engine plugin (v1)
   - [ ] Subprocess management with structured output parsing
   - [ ] Per-iteration timeout with process kill
