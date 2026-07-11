@@ -142,6 +142,11 @@ class PowermetricsThermalSensor:
                 if cpu_mw is not None or gpu_mw is not None:
                     combined = (cpu_mw or 0) + (gpu_mw or 0)
                 pressure = _parse_thermal_pressure(proc.stdout)
+                # Fail closed without a real pressure signal (e.g. unprivileged
+                # cpu/gpu-only sample that never ran the thermal sampler).
+                if not pressure:
+                    last_err = "powermetrics produced no thermal pressure signal"
+                    continue
                 return ThermalReading(
                     method="powermetrics",
                     thermal_pressure=pressure,
@@ -175,12 +180,17 @@ def _parse_power_mw(text: str, label: str) -> float | None:
 
 
 def _parse_thermal_pressure(text: str) -> str | None:
-    """Parse pressure from powermetrics thermal sampler output."""
+    """Parse pressure from powermetrics thermal sampler output.
+
+    Returns:
+        Pressure level string when present; ``None`` if the sample has no
+        thermal pressure line (do not invent Nominal).
+    """
     for line in text.splitlines():
         low = line.lower()
         if ":" in line and ("current pressure level" in low or "thermal pressure" in low):
             return line.split(":")[-1].strip() or None
-    return "Nominal"
+    return None
 
 
 def build_thermal_sensor(monitor: bool) -> ThermalSensor:
@@ -192,10 +202,10 @@ def build_thermal_sensor(monitor: bool) -> ThermalSensor:
     """
     if not monitor:
         return OffThermalSensor()
-    # Probe once
+    # Probe once — full mode requires a real pressure reading, not power-only.
     sensor = PowermetricsThermalSensor()
     reading = sensor.read()
-    if reading.method == "powermetrics":
+    if reading.method == "powermetrics" and reading.thermal_pressure:
         return sensor
     return DegradedThermalSensor()
 
