@@ -107,14 +107,27 @@ mean_a (mlx-lm) = 1033.65 ms
 mean_b (MTPLX)  = 4048.67 ms
 mean_diff (b−a) = +3015.02 ms   # MTPLX slower
 test: mannwhitney_u
+
+# Primary inferential result (α=0.05 significance)
 p_value ≈ 0.151
-Cohen's d ≈ 1.76
-CI95 (mean_diff) ≈ [1005, 4497] ms
 significant_at_0_05: false
 verdict: no_significant_difference
+
+# Supplementary effect-size statistics (not used for the significance call)
+Cohen's d ≈ 1.76
+CI95 (mean_diff) ≈ [1005, 4497] ms
 ```
 
-**Practical reading (not a marketing win):** point estimate says MTPLX e2e is ~**3.9×** mlx-lm mean on this pilot, with **zero** draft acceptance (`acceptance_rate=0`). Large Cohen's d but **non-significant** at α=0.05 with n=5 and high within-arm e2e variance. Do **not** publish a single tok/s “MTPLX is faster” claim from this pair.
+**How the numbers are produced** (`workbench.statistics_compare`): Shapiro–Wilk
+on each arm (when n≥3) selected **Mann–Whitney U** (two-sided) over Welch’s t;
+the **p-value** is the sole gate for `significant_at_0_05` / `verdict`.
+**Cohen’s d** is pooled-SD standardized mean difference (b−a), reported for
+magnitude only. **CI95 (mean_diff)** under Mann–Whitney is a **bootstrap**
+interval on the mean difference: 2000 resamples with replacement of each arm
+(`numpy` Generator seed 0), then the 2.5th and 97.5th percentiles of
+\(\bar{b}^* - \bar{a}^*\) (not a CI on the U statistic).
+
+**Practical reading (not a marketing win):** point estimate says MTPLX e2e is ~**3.9×** mlx-lm mean on this pilot, with **zero** draft acceptance (`acceptance_rate=0`). Large supplementary Cohen's d but **non-significant** Mann–Whitney p at α=0.05 with n=5 and high within-arm e2e variance. Do **not** publish a single tok/s “MTPLX is faster” claim from this pair.
 
 ## Analysis
 
