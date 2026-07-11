@@ -56,13 +56,16 @@ Issues below are the **source of truth** for purpose, definition of done, and sm
 
 ## Phase 0.5: Thermal Reproducibility Validation (HARD GATE)
 
-- [ ] Select test model (mlx-lm, Qwen3 or similar, fixed prompt)
-- [ ] Run 20 measurements spread across 2 days (morning/afternoon/evening)
-- [ ] Compute inter-run CoV for decode tok/s
-- [ ] If CoV < 5%: document methodology, proceed to Phase 1
-- [ ] If CoV > 5%: iterate (increase cooldown, restrict time-of-day, log ambient temp, statistical normalization)
-- [ ] Write thermal reproducibility report with validated methodology
-- [ ] Update HLD §22 with empirical findings
+> **Status (2026-07-10):** **PASS** — protocol CoV **2.57%** (N=25). Report: [`docs/spikes/005_thermal_reproducibility.md`](spikes/005_thermal_reproducibility.md). Issue [#3](https://github.com/weklund/mlx-inference-workbench/issues/3).
+
+- [x] Select test model (mlx-lm, Qwen2.5-Coder-7B-Instruct-4bit, fixed prompt)
+- [x] Multi-session measurements over 2 days (morning/afternoon/evening where protocol-clean)
+- [x] Compute inter-run CoV for tok/s (protocol gate)
+- [x] CoV < 5% under protocol (2.57%); exclusive-use + exclude contended sessions
+- [x] Write thermal reproducibility report with validated methodology
+- [x] Update HLD §22 with empirical findings
+- [ ] Close GitHub issue #3 after this report lands on `main`
+- [ ] Official baseline under protocol → [#36](https://github.com/weklund/mlx-inference-workbench/issues/36)
 
 ---
 
