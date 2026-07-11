@@ -6,7 +6,9 @@ experiment:
     MTPLX arm of the stock vs MTP compare (#9). Same model/prompts/policy as
     protocol_compare_mlx_lm_qwen35_2b.yaml. Requires: uv sync --extra mtplx,
     Metal, Qwen/Qwen3.5-2B with MTP tensors (mtplx inspect). Exclusive session
-    + thermal protocol (#3). Correctness OFF until dataset refs exist.
+    + thermal protocol (#3). Correctness OFF: no gold refs on agentic_coding_v1
+    (require_correctness:true aborts before timing). Zero mean acceptance_rate
+    demotes quality to speculative_no_accept and blocks performance compare.
     Speculative depth fixed at 4 for this pilot. Compare with --metric e2e_ms.
 
 hardware:
@@ -31,6 +33,8 @@ benchmark:
   monitor_thermal: true
   abort_if_throttling: true
   max_prompts: 8
+  # Cannot enable until dataset rows include non-empty `reference` (0/24 today).
+  # Speculative performance validity is gated by acceptance (see metrics.py).
   require_correctness: false
 
 metrics:

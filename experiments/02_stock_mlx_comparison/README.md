@@ -38,10 +38,12 @@ Comparability Gate allows different models/backends, but a **cross-size / cross-
 MTPLX v1 is **e2e-only** (`decode_tok_s` / `ttft_ms` null):
 
 ```bash
-uv run bench compare 81aff0e72f89 f2f5a38b129d --metric e2e_ms
+uv run bench compare <mlx_lm_run> <mtplx_run> --metric e2e_ms
 ```
 
 Lower `e2e_ms` is better. MTPLX `acceptance_rate` from `bench report` only.
+
+**Correctness / acceptance gates:** `require_correctness` stays **false** while `agentic_coding_v1` has no gold `reference` fields (enabling it aborts before timing). Speculative performance claims are gated separately: mean `acceptance_rate == 0` → `quality_tag=speculative_no_accept` → comparability **blocks** compare.
 
 ## Configs
 
@@ -58,7 +60,7 @@ Preflight: AC Power, powermode **2**, thermal pressure **Nominal**, GPU idle-ish
 |-------|------------------------|----------------------|
 | experiment_name | `protocol-compare-mlx-lm-qwen35-2b` | `protocol-compare-mtplx-qwen35-2b` |
 | thermal_monitoring | **full** | **full** |
-| quality_tag | full (5/5) | full (5/5) |
+| quality_tag | full (5/5) | **would be `speculative_no_accept` under post-#9 gate** (run pre-gated as full) |
 | unstable | false | false |
 | e2e_ms p50 | **1226** | **4990** |
 | e2e_ms mean / CoV | 1034 / **0.46** | 4049 / **0.59** |
@@ -94,7 +96,7 @@ verdict: no_significant_difference
 
 ## Analysis
 
-1. **Harness DoD for #9 is met:** MTPLX run succeeds with acceptance fields populated (honest zeros, not silent nulls); Comparability Gate allows the pair; report includes effect size + CI + verdict.
+1. **Harness DoD for #9 is met:** MTPLX run succeeds with acceptance fields populated (honest zeros, not silent nulls); report includes effect size + CI + verdict. **Post-fix:** mean `acceptance_rate == 0` now demotes `quality_tag` to `speculative_no_accept` and the Comparability Gate **blocks** performance compare (historical pair stored as `full` before this gate).
 2. **Product/performance finding:** On Qwen3.5-2B bf16, agentic pilot prompts, depth=4, temp=0, MTP drafts did not accept. Speculative path paid overhead without speedup → slower e2e than stock mlx-lm AR.
 3. **Likely drivers to investigate later (out of #9 scope):** prompt style (raw completion vs chat template), MTP head quality on short agentic JSON tasks, `speculative_depth`, quant/forge profiles, larger MTP models (9B/27B) where custom kernels dominate, stream timing for decode-apples comparison.
 4. **Do not compare this pair to `e46a28d62dee`** for effect size (different model/size/quant).

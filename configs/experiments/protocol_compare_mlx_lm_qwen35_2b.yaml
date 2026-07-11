@@ -6,9 +6,11 @@ experiment:
     mlx-lm arm of the MTPLX vs stock compare (#9). Same model/prompts/policy as
     protocol_compare_mtplx_qwen35_2b.yaml so the Comparability Gate can pass and
     e2e effect size is meaningful. Exclusive session + thermal protocol (#3).
-    Correctness gate OFF until agentic_coding_v1 has gold references.
-    Prefer same-session pair with the MTPLX arm; compare with --metric e2e_ms
-    (MTPLX v1 is e2e-only).
+    Correctness gate OFF: agentic_coding_v1 has no gold `reference` fields
+    (require_correctness:true fails closed before timing). Speculative peers
+    use quality_tag speculative_no_accept when mean acceptance_rate is 0 so
+    zero-accept MTPLX runs cannot pass the comparability gate as performance
+    claims. Prefer same-session pair; compare with --metric e2e_ms.
 
 hardware:
   profile: "m5_max_128gb"
@@ -31,6 +33,7 @@ benchmark:
   abort_if_throttling: true
   # Five-prompt pilot: one prompt per timed iteration (orchestrator).
   max_prompts: 8
+  # Cannot enable until dataset rows include non-empty `reference` (0/24 today).
   require_correctness: false
 
 metrics:

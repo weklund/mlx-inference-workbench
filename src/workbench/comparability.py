@@ -87,6 +87,9 @@ def check_runs_comparable(a: RunRecord, b: RunRecord) -> GateResult:
             )
         if run.metrics.quality_tag == "insufficient_data":
             violations.append(f"run_{label}_quality: insufficient_data")
+        # Zero draft acceptance ⇒ speculative path inactive; not a performance claim.
+        if run.metrics.quality_tag == "speculative_no_accept":
+            violations.append(f"run_{label}_quality: speculative_no_accept")
 
     # de-dupe while preserving order
     seen: set[str] = set()

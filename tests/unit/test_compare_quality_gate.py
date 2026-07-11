@@ -86,3 +86,26 @@ def test_two_full_quality_runs_remain_comparable():
     b = _record("b", n_success=6)
     result = compare_runs(a, b, metric_name="decode_tok_s")
     assert result.comparable is True
+
+
+def test_zero_acceptance_speculative_run_blocked_from_performance_compare():
+    """Mean acceptance_rate 0 ⇒ quality speculative_no_accept ⇒ gate blocks."""
+    solid = _record("solid", n_success=6)
+    zero_acc_iters = []
+    for _ in range(6):
+        r = _success()
+        r.acceptance_rate = 0.0
+        zero_acc_iters.append(r)
+    zero_metrics = summarize_iterations(zero_acc_iters)
+    assert zero_metrics.quality_tag == "speculative_no_accept"
+    zero_run = RunRecord(
+        metadata=solid.metadata.__class__(
+            **{**solid.metadata.__dict__, "run_id": "zero_acc", "backend": "mtplx"}
+        ),
+        metrics=zero_metrics,
+        iterations=[i.to_dict() for i in zero_acc_iters],
+    )
+    result = compare_runs(solid, zero_run, metric_name="e2e_ms")
+    assert result.comparable is False
+    assert result.verdict == "blocked_by_comparability_gate"
+    assert any("speculative_no_accept" in v for v in result.violations)
